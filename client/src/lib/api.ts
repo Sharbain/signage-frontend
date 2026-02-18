@@ -1,6 +1,6 @@
 // client/src/lib/api.ts
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const API_BASE = "https://signage-backend-ng5f.onrender.com/api";
 
 // Helper to automatically attach JWT
 async function authorizedFetch(url: string, options: any = {}) {
