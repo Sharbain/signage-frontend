@@ -1,0 +1,135 @@
+⭐ STEP 3 — Preview Renderer for the Group Modal
+
+Add:
+
+function updateGroupZonePreview(zone) {
+    const box = document.getElementById("groupZonePreview");
+
+    if (zone.type === "content") {
+        if (!zone.playlist || zone.playlist.length === 0) {
+            box.innerHTML = "No content assigned";
+        } else {
+            box.innerHTML = `<img src="${zone.playlist[0].thumbnail}" 
+                                style="max-width:100%; max-height:100%;">`;
+        }
+    }
+
+    if (zone.type === "rss") {
+        box.innerHTML = `
+            <div style="color:white; font-size:14px; padding:10px;">
+                RSS Feed:<br>
+                ${zone.rssUrl || "No feed assigned"}
+            </div>`;
+    }
+
+    if (zone.type === "social") {
+        box.innerHTML = `
+            <div style="color:white; font-size:14px; padding:10px;">
+                Platform: ${zone.social?.platform || "None"}<br>
+                Handle: ${zone.social?.handle || ""}
+            </div>`;
+    }
+
+    if (zone.type === "ticker") {
+        box.innerHTML = `
+            <div style="
+                background:#111;
+                color:#fff;
+                padding:10px;
+                width:100%;
+                font-size:16px;
+                white-space:nowrap;
+            ">
+                ${zone.tickerText || "Ticker not assigned"}
+            </div>`;
+    }
+}
+
+⭐ STEP 4 — Group Playlist Assignment
+async function uploadGroupZonePlaylist() {
+    const files = document.getElementById("groupZonePlaylistUpload").files;
+    if (!files.length) return alert("No files selected");
+
+    const formData = new FormData();
+    for (let f of files) formData.append("files", f);
+
+    const res = await fetch(`/api/groups/${groupId}/zone/${currentGroupZoneId}/playlist`, {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    currentGroupZoneObj.playlist = data.playlist;
+
+    updateGroupZonePreview(currentGroupZoneObj);
+    alert("Playlist assigned to group!");
+}
+
+⭐ STEP 5 — Group RSS Assignment
+async function assignGroupRSS() {
+    const rssUrl = document.getElementById("groupZoneRSSUrl").value.trim();
+    if (!rssUrl) return alert("Enter RSS URL");
+
+    await fetch(`/api/groups/${groupId}/zone/${currentGroupZoneId}/rss`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ rssUrl })
+    });
+
+    currentGroupZoneObj.rssUrl = rssUrl;
+    updateGroupZonePreview(currentGroupZoneObj);
+
+    alert("RSS assigned to group");
+}
+
+⭐ STEP 6 — Group Social Feed Assignment
+async function assignGroupSocial() {
+    const platform = document.getElementById("groupZoneSocialPlatform").value;
+    const handle = document.getElementById("groupZoneSocialHandle").value.trim();
+
+    if (!platform) return alert("Select platform");
+
+    await fetch(`/api/groups/${groupId}/zone/${currentGroupZoneId}/social`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ platform, handle })
+    });
+
+    currentGroupZoneObj.social = { platform, handle };
+    updateGroupZonePreview(currentGroupZoneObj);
+
+    alert("Social feed assigned to group");
+}
+
+⭐ STEP 7 — Group Ticker Assignment
+async function assignGroupTicker() {
+    const text = document.getElementById("groupZoneTickerText").value.trim();
+    if (!text) return alert("Enter ticker text");
+
+    await fetch(`/api/groups/${groupId}/zone/${currentGroupZoneId}/ticker`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ text })
+    });
+
+    currentGroupZoneObj.tickerText = text;
+    updateGroupZonePreview(currentGroupZoneObj);
+
+    alert("Ticker assigned to group");
+}
+
+⭐ STEP 8 — Publish Group Zone Changes
+
+This pushes all zone updates to EVERY device:
+
+async function publishGroupZoneChanges() {
+    await fetch(`/api/groups/${groupId}/publish`, {
+        method: "POST"
+    });
+    alert("Published changes to all devices in the group!");
+}
+
+⭐ STEP 9 — Close Modal
+function closeGroupZoneModal() {
+    document.getElementById("groupZoneModal").style.display = "none";
+}

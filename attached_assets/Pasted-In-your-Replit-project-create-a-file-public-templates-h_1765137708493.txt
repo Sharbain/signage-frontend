@@ -1,0 +1,317 @@
+In your Replit project, create a file public/templates.html (or wherever you serve html files) and put this inside:
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Template Designer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+    }
+    #templatesList {
+      width: 30%;
+      border-right: 1px solid #ccc;
+      padding-right: 10px;
+    }
+    #designer {
+      flex: 1;
+    }
+    .template-item {
+      padding: 8px;
+      border: 1px solid #ddd;
+      margin-bottom: 5px;
+      cursor: pointer;
+    }
+    .template-item:hover {
+      background: #f5f5f5;
+    }
+    #previewWrapper {
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      width: 480px;
+      height: 270px;
+      position: relative;
+      background: #000;
+    }
+    .zone-box {
+      position: absolute;
+      border: 2px dashed #00ff00;
+      background: rgba(0, 255, 0, 0.1);
+      font-size: 10px;
+      color: #fff;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 8px;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #zoneList {
+      margin-top: 10px;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      padding: 5px;
+    }
+    .zone-item {
+      font-size: 12px;
+      border-bottom: 1px solid #eee;
+      padding: 3px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="templatesList">
+    <h3>Templates</h3>
+    <div id="templatesContainer"></div>
+    <button onclick="newTemplate()">+ New Template</button>
+  </div>
+
+  <div id="designer">
+    <h3>Template Designer</h3>
+
+    <label>Name:
+      <input id="tplName" />
+    </label>
+
+    <label>Description:
+      <textarea id="tplDescription"></textarea>
+    </label>
+
+    <label>Width (px):
+      <input id="tplWidth" type="number" value="1920" />
+    </label>
+
+    <label>Height (px):
+      <input id="tplHeight" type="number" value="1080" />
+    </label>
+
+    <label>Background Color:
+      <input id="tplBgColor" type="color" value="#000000" />
+    </label>
+
+    <button onclick="saveTemplate()">Save Template</button>
+
+    <h4>Zones</h4>
+    <div id="zoneForm">
+      <label>Zone Name:
+        <input id="zoneName" />
+      </label>
+      <label>Type:
+        <select id="zoneType">
+          <option value="content">Content</option>
+          <option value="rss">RSS</option>
+          <option value="social">Social Media</option>
+          <option value="ticker">Ticker</option>
+        </select>
+      </label>
+      <label>X (% from left):
+        <input id="zoneX" type="number" value="0" />
+      </label>
+      <label>Y (% from top):
+        <input id="zoneY" type="number" value="0" />
+      </label>
+      <label>Width (% of template):
+        <input id="zoneW" type="number" value="100" />
+      </label>
+      <label>Height (% of template):
+        <input id="zoneH" type="number" value="100" />
+      </label>
+      <button onclick="addZone()">+ Add Zone</button>
+    </div>
+
+    <div id="zoneList"></div>
+
+    <h4>Preview</h4>
+    <div id="previewWrapper"></div>
+
+  </div>
+
+<script>
+  let templates = [];
+  let currentTemplateId = null;
+  let currentZones = [];
+
+  async function loadTemplates() {
+    const res = await fetch('/api/templates');
+    templates = await res.json();
+    renderTemplatesList();
+  }
+
+  function renderTemplatesList() {
+    const container = document.getElementById('templatesContainer');
+    container.innerHTML = '';
+    templates.forEach(tpl => {
+      const div = document.createElement('div');
+      div.className = 'template-item';
+      div.textContent = tpl.name;
+      div.onclick = () => selectTemplate(tpl.id);
+      container.appendChild(div);
+    });
+  }
+
+  function newTemplate() {
+    currentTemplateId = null;
+    currentZones = [];
+    document.getElementById('tplName').value = '';
+    document.getElementById('tplDescription').value = '';
+    document.getElementById('tplWidth').value = 1920;
+    document.getElementById('tplHeight').value = 1080;
+    document.getElementById('tplBgColor').value = '#000000';
+    renderZones();
+    renderPreview();
+  }
+
+  async function selectTemplate(id) {
+    const res = await fetch('/api/templates/' + id);
+    const tpl = await res.json();
+
+    currentTemplateId = tpl.id;
+    currentZones = tpl.zones || [];
+
+    document.getElementById('tplName').value = tpl.name;
+    document.getElementById('tplDescription').value = tpl.description || '';
+    document.getElementById('tplWidth').value = tpl.width || 1920;
+    document.getElementById('tplHeight').value = tpl.height || 1080;
+    document.getElementById('tplBgColor').value = tpl.backgroundColor || '#000000';
+
+    renderZones();
+    renderPreview();
+  }
+
+  function renderZones() {
+    const list = document.getElementById('zoneList');
+    list.innerHTML = '';
+    currentZones.forEach((z, idx) => {
+      const div = document.createElement('div');
+      div.className = 'zone-item';
+      div.textContent = `${idx + 1}) ${z.name} [${z.type}] x:${z.x}% y:${z.y}% w:${z.width}% h:${z.height}%`;
+      list.appendChild(div);
+    });
+  }
+
+  function renderPreview() {
+    const wrapper = document.getElementById('previewWrapper');
+    wrapper.innerHTML = '';
+
+    const bgColor = document.getElementById('tplBgColor').value || '#000000';
+    wrapper.style.background = bgColor;
+
+    currentZones.forEach(z => {
+      const box = document.createElement('div');
+      box.className = 'zone-box';
+
+      const x = parseFloat(z.x) || 0;
+      const y = parseFloat(z.y) || 0;
+      const w = parseFloat(z.width) || 100;
+      const h = parseFloat(z.height) || 100;
+
+      box.style.left = x + '%';
+      box.style.top = y + '%';
+      box.style.width = w + '%';
+      box.style.height = h + '%';
+
+      box.textContent = z.name + ' (' + z.type + ')';
+
+      wrapper.appendChild(box);
+    });
+  }
+
+  function addZone() {
+    const name = document.getElementById('zoneName').value.trim();
+    const type = document.getElementById('zoneType').value;
+    const x = document.getElementById('zoneX').value;
+    const y = document.getElementById('zoneY').value;
+    const w = document.getElementById('zoneW').value;
+    const h = document.getElementById('zoneH').value;
+
+    if (!name) {
+      alert('Zone name is required');
+      return;
+    }
+
+    currentZones.push({
+      id: 'zone-' + (currentZones.length + 1),
+      name,
+      type,
+      x: Number(x),
+      y: Number(y),
+      width: Number(w),
+      height: Number(h)
+    });
+
+    document.getElementById('zoneName').value = '';
+
+    renderZones();
+    renderPreview();
+  }
+
+  async function saveTemplate() {
+    const name = document.getElementById('tplName').value.trim();
+    const description = document.getElementById('tplDescription').value.trim();
+    const width = Number(document.getElementById('tplWidth').value);
+    const height = Number(document.getElementById('tplHeight').value);
+    const backgroundColor = document.getElementById('tplBgColor').value;
+
+    if (!name) {
+      alert('Template name is required');
+      return;
+    }
+
+    const payload = {
+      name,
+      description,
+      width,
+      height,
+      backgroundColor,
+      zones: currentZones
+    };
+
+    let res;
+    if (!currentTemplateId) {
+      res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch('/api/templates/' + currentTemplateId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await res.json();
+    if (!res.ok || !data.ok && !data.id && !data.template) {
+      console.error(data);
+      alert('Error saving template');
+      return;
+    }
+
+    await loadTemplates();
+    if (data.template && data.template.id) {
+      currentTemplateId = data.template.id;
+    }
+
+    alert('Template saved');
+  }
+
+  loadTemplates();
+  newTemplate();
+</script>
+
+</body>
+</html>

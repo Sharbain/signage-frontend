@@ -1,0 +1,88 @@
+function renderTemplateCanvas(){
+  const canvas = document.getElementById("templateCanvas");
+  canvas.innerHTML = "";
+
+  layoutData.zones.forEach(zone => {
+    const div = document.createElement("div");
+    div.className = "zone";
+    div.dataset.zoneId = zone.id;
+    div.style.position = "absolute";
+    div.style.left = zone.x + "px";
+    div.style.top = zone.y + "px";
+    div.style.width = zone.width + "px";
+    div.style.height = zone.height + "px";
+    div.style.border = "2px dashed #333";
+    div.style.background = "#f0f0f0";
+    div.style.cursor = "move";
+    div.innerHTML = `<strong>${zone.id}</strong><br/>Items: ${zone.playlist.length}`;
+
+    // --- MOVE LOGIC ---
+    div.addEventListener("mousedown", e => {
+      if(e.target.className.includes("resize")) return; // skip resize
+      let offsetX = e.offsetX, offsetY = e.offsetY;
+      function move(eMove){
+        zone.x = eMove.clientX - canvas.getBoundingClientRect().left - offsetX;
+        zone.y = eMove.clientY - canvas.getBoundingClientRect().top - offsetY;
+        renderTemplateCanvas();
+      }
+      function stopMove(){ document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", stopMove); }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", stopMove);
+    });
+
+    // --- RESIZE LOGIC ---
+    const resizeHandle = document.createElement("div");
+    resizeHandle.className = "resize";
+    resizeHandle.style.position = "absolute";
+    resizeHandle.style.width = "10px";
+    resizeHandle.style.height = "10px";
+    resizeHandle.style.right = "0";
+    resizeHandle.style.bottom = "0";
+    resizeHandle.style.background = "#333";
+    resizeHandle.style.cursor = "se-resize";
+
+    resizeHandle.addEventListener("mousedown", e => {
+      e.stopPropagation();
+      let startX = e.clientX, startY = e.clientY;
+      let startWidth = zone.width, startHeight = zone.height;
+
+      function resize(eMove){
+        zone.width = startWidth + (eMove.clientX - startX);
+        zone.height = startHeight + (eMove.clientY - startY);
+        renderTemplateCanvas();
+      }
+      function stopResize(){ document.removeEventListener("mousemove", resize); document.removeEventListener("mouseup", stopResize); }
+      document.addEventListener("mousemove", resize);
+      document.addEventListener("mouseup", stopResize);
+    });
+
+    div.appendChild(resizeHandle);
+    canvas.appendChild(div);
+
+    // --- DROP CONTENT INTO ZONE ---
+    div.addEventListener("dragover", e => e.preventDefault());
+    div.addEventListener("drop", e => {
+      const itemId = e.dataTransfer.getData("text/plain");
+      if(!zone.playlist.includes(itemId)) zone.playlist.push(itemId);
+      renderTemplateCanvas();
+    });
+  });
+}
+
+// Add new zone
+document.getElementById("addZoneBtn").addEventListener("click", () => {
+  const id = "zone" + (layoutData.zones.length+1);
+  layoutData.zones.push({ id, x:0, y:0, width:200, height:100, playlist: [] });
+  renderTemplateCanvas();
+});
+
+// Save layout to DB
+document.getElementById("saveLayoutBtn").addEventListener("click", async () => {
+  if(!selectedTemplateId) return alert("Select template first");
+  await fetch(`/api/templates/${selectedTemplateId}/layout`, {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ layout: layoutData })
+  });
+  alert("Layout saved!");
+});

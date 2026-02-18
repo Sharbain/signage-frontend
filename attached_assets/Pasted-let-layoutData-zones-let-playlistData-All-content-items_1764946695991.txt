@@ -1,0 +1,68 @@
+let layoutData = { zones: [] };
+let playlistData = []; // All content items for template
+let selectedTemplateId = null;
+
+// Load template playlist
+async function loadPlaylist(templateId){
+  const res = await fetch(`/api/templates/${templateId}/playlist`);
+  playlistData = await res.json();
+  renderPlaylistPanel();
+}
+
+// Render Playlist Panel
+function renderPlaylistPanel(){
+  const ul = document.getElementById("playlistPanel");
+  ul.innerHTML = "";
+  playlistData.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = `${item.content_type}: ${item.content_url}`;
+    li.draggable = true;
+    li.dataset.id = item.id;
+    
+    li.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", item.id);
+    });
+
+    ul.appendChild(li);
+  });
+}
+
+// Render Template Canvas with Zones
+function renderTemplateCanvas(){
+  const canvas = document.getElementById("templateCanvas");
+  canvas.innerHTML = "";
+  layoutData.zones.forEach(zone => {
+    const div = document.createElement("div");
+    div.className = "zone";
+    div.dataset.zoneId = zone.id;
+    div.style.position = "absolute";
+    div.style.left = zone.x + "px";
+    div.style.top = zone.y + "px";
+    div.style.width = zone.width + "px";
+    div.style.height = zone.height + "px";
+    div.style.border = "2px dashed #333";
+    div.style.background = "#f0f0f0";
+    div.innerHTML = `<strong>${zone.id}</strong><br/>Items: ${zone.playlist.length}`;
+    
+    // Allow drop
+    div.addEventListener("dragover", e => e.preventDefault());
+    div.addEventListener("drop", e => {
+      const itemId = e.dataTransfer.getData("text/plain");
+      if(!zone.playlist.includes(itemId)) zone.playlist.push(itemId);
+      renderTemplateCanvas(); // re-render to update count
+    });
+
+    canvas.appendChild(div);
+  });
+}
+
+// Add content to playlist
+document.getElementById("addContentBtn").addEventListener("click", async () => {
+  const contentUrl = document.getElementById("newContentUrl").value;
+  const contentType = document.getElementById("newContentType").value;
+  await fetch(`/api/templates/${selectedTemplateId}/playlist`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ contentType, contentUrl })
+  });
+  loadPlaylist(selectedTempl

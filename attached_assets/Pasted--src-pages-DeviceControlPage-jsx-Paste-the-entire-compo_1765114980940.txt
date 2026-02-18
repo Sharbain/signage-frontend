@@ -1,0 +1,150 @@
+📌 src/pages/DeviceControlPage.jsx
+
+Paste the entire component below:
+
+🎯 DEVICE CONTROL PAGE — FULL JSX FILE
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import "./DeviceControlPage.css"; // optional styling
+
+export default function DeviceControlPage() {
+  const { id } = useParams();
+  const [device, setDevice] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [screenshotUrl, setScreenshotUrl] = useState(null);
+
+  const fetchDevice = async () => {
+    try {
+      const res = await fetch(`/api/devices/${id}`);
+      const data = await res.json();
+      setDevice(data.device);
+      setScreenshotUrl(`/api/devices/${id}/screenshot?ts=${Date.now()}`);
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to fetch device", err);
+    }
+  };
+
+  const sendCommand = async (command, payload = {}) => {
+    await fetch(`/api/devices/${id}/command`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ command, ...payload }),
+    });
+    alert(`Command sent: ${command}`);
+  };
+
+  useEffect(() => {
+    fetchDevice();
+    const interval = setInterval(fetchDevice, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) return <div className="loading">Loading device...</div>;
+  if (!device) return <div>Device not found.</div>;
+
+  return (
+    <div className="device-control-wrapper">
+      <h2>Device: {device.name}</h2>
+      <p>ID: {device.deviceId}</p>
+
+      <div className="status-box">
+        <span
+          className={`status-dot ${
+            device.isOnline ? "online" : "offline"
+          }`}
+        ></span>
+        <strong>
+          {device.isOnline ? "Online" : "Offline"} — Last Seen:{" "}
+          {new Date(device.lastSeen).toLocaleString()}
+        </strong>
+      </div>
+
+      <div className="grid">
+        {/* LEFT PANEL */}
+        <div className="panel">
+          <h3>📺 Live Screenshot</h3>
+
+          {screenshotUrl && (
+            <img
+              src={screenshotUrl}
+              alt="Live Screenshot"
+              className="screenshot"
+            />
+          )}
+
+          <button
+            onClick={() =>
+              setScreenshotUrl(`/api/devices/${id}/screenshot?ts=${Date.now()}`)
+            }
+          >
+            Refresh Screenshot
+          </button>
+
+          <button onClick={() => sendCommand("captureVideo", { seconds: 10 })}>
+            🎥 Capture 10-second Video
+          </button>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div className="panel">
+          <h3>🔧 Device Controls</h3>
+
+          <label>Brightness</label>
+          <input
+            type="range"
+            min="1"
+            max="100"
+            value={device.brightness || 50}
+            onChange={(e) =>
+              sendCommand("setBrightness", {
+                value: parseInt(e.target.value),
+              })
+            }
+          />
+
+          <label>Volume</label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={device.volume || 50}
+            onChange={(e) =>
+              sendCommand("setVolume", {
+                value: parseInt(e.target.value),
+              })
+            }
+          />
+
+          <button onClick={() => sendCommand("reboot")}>🔄 Reboot Device</button>
+          <button onClick={() => sendCommand("refreshContent")}>
+            🔁 Refresh Playback
+          </button>
+          <button onClick={() => sendCommand("clearCache")}>🧹 Clear Cache</button>
+          <button onClick={() => sendCommand("openMap")}>🗺 Open on Map</button>
+        </div>
+
+        {/* INFO PANEL */}
+        <div className="panel">
+          <h3>ℹ Device Information</h3>
+
+          <p>Battery: {device.batteryLevel ?? "—"}%</p>
+          <p>Signal Strength: {device.signalStrength ?? "—"} dBm</p>
+          <p>Temperature: {device.temperature ?? "—"} °C</p>
+          <p>Storage Free: {Math.round(device.freeStorage / 1_000_000)} MB</p>
+          <p>Location: {device.latitude}, {device.longitude}</p>
+
+          <h4>Now Playing</h4>
+          <p>{device.currentContentName || "Nothing playing"}</p>
+
+          <h4>Playlist</h4>
+          <ul>
+            {device.playlist?.map((item) => (
+              <li key={item.id}>{item.name}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}

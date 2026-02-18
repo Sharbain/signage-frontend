@@ -1,0 +1,82 @@
+<div class="section">
+  <h2>Template Editor</h2>
+
+  <input type="text" id="templateName" placeholder="Template Name"/>
+  <button id="createTemplateBtn">Create Template</button>
+
+  <h3>Existing Templates</h3>
+  <select id="templateList"></select>
+  <button id="editTemplateBtn">Edit Template</button>
+
+  <div id="playlistManager" style="margin-top:20px;">
+    <h4>Playlist</h4>
+    <ul id="playlistItems"></ul>
+    <input type="text" id="contentUrl" placeholder="Content URL"/>
+    <select id="contentType">
+      <option value="image">Image</option>
+      <option value="video">Video</option>
+      <option value="live">Live Feed</option>
+      <option value="api">API</option>
+      <option value="social">Social Media</option>
+    </select>
+    <button id="addContentBtn">Add Content</button>
+  </div>
+</div>
+
+<script>
+  async function loadTemplates() {
+    const res = await fetch("/api/templates");
+    const templates = await res.json();
+    const select = document.getElementById("templateList");
+    select.innerHTML = "";
+    templates.forEach(t => {
+      const option = document.createElement("option");
+      option.value = t.id;
+      option.textContent = t.name;
+      select.appendChild(option);
+    });
+  }
+
+  // Create template
+  document.getElementById("createTemplateBtn").addEventListener("click", async () => {
+    const name = document.getElementById("templateName").value;
+    await fetch("/api/templates", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ name })
+    });
+    loadTemplates();
+  });
+
+  // Load playlist for selected template
+  async function loadPlaylist(templateId){
+    const res = await fetch(`/api/templates/${templateId}/playlist`);
+    const items = await res.json();
+    const ul = document.getElementById("playlistItems");
+    ul.innerHTML = "";
+    items.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = `${item.content_type}: ${item.content_url}`;
+      ul.appendChild(li);
+    });
+  }
+
+  document.getElementById("templateList").addEventListener("change", (e) => {
+    loadPlaylist(e.target.value);
+  });
+
+  // Add content to playlist
+  document.getElementById("addContentBtn").addEventListener("click", async () => {
+    const templateId = document.getElementById("templateList").value;
+    const contentType = document.getElementById("contentType").value;
+    const contentUrl = document.getElementById("contentUrl").value;
+    await fetch(`/api/templates/${templateId}/playlist`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ contentType, contentUrl })
+    });
+    loadPlaylist(templateId);
+  });
+
+  loadTemplates();
+</script>

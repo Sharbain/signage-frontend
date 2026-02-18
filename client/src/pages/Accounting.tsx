@@ -1,0 +1,69 @@
+import { useState } from "react";
+
+export default function Accounting() {
+  const [invoices] = useState([
+    { id: 1, client: "Medlabs Jordan", amount: 4500, date: "2025-11-30", status: "Paid" },
+    { id: 2, client: "ABC Corp", amount: 1200, date: "2025-11-28", status: "Pending" },
+    { id: 3, client: "XYZ Co", amount: 3200, date: "2025-11-25", status: "Paid" },
+  ]);
+
+  return (
+    <div className="p-6">
+
+      {/* PAGE TITLE */}
+      <h1 className="text-4xl font-bold gradient-text mb-8">Accounting & Invoices</h1>
+
+      {/* REVENUE SUMMARY CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="glass p-6">
+          <h2 className="text-sm opacity-80">Total Revenue</h2>
+          <p className="text-3xl font-bold mt-2">$9,900</p>
+        </div>
+        <div className="glass p-6">
+          <h2 className="text-sm opacity-80">Pending Payments</h2>
+          <p className="text-3xl font-bold mt-2 text-red-400">$1,200</p>
+        </div>
+        <div className="glass p-6">
+          <h2 className="text-sm opacity-80">Paid Invoices</h2>
+          <p className="text-3xl font-bold mt-2 text-green-400">2</p>
+        </div>
+      </div>
+
+      {/* INVOICE LIST */}
+      <div className="glass p-6">
+        <h2 className="text-2xl font-semibold gradient-text mb-4">Invoices</h2>
+
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-white/20">
+              <th className="py-2 px-4">ID</th>
+              <th className="py-2 px-4">Client</th>
+              <th className="py-2 px-4">Amount</th>
+              <th className="py-2 px-4">Date</th>
+              <th className="py-2 px-4">Status</th>
+              <th className="py-2 px-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.map((inv) => (
+              <tr key={inv.id} className="border-b border-white/10 hover:bg-white/5">
+                <td className="py-2 px-4">{inv.id}</td>
+                <td className="py-2 px-4">{inv.client}</td>
+                <td className="py-2 px-4">${inv.amount}</td>
+                <td className="py-2 px-4">{inv.date}</td>
+                <td className={`py-2 px-4 font-semibold ${inv.status === "Paid" ? "text-green-400" : "text-red-400"}`}>
+                  {inv.status}
+                </td>
+                <td className="py-2 px-4">
+                  <button className="glass px-3 py-1 text-sm">View</button>
+                  <button className="button-gradient px-3 py-1 text-sm ml-2">Download</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  );
+}
