@@ -1,23 +1,13 @@
-{
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
-  "compilerOptions": {
-    "incremental": true,
-    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": true,
-    "module": "ESNext",
-    "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
-    "jsx": "preserve",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
-    "types": ["node", "vite/client"],
-    "paths": {
-      "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
-    }
-  }
-}
+# Signage Frontend (Vercel)
+
+## Run locally
+1. `npm install`
+2. Create `.env` from `.env.example`
+3. `npm run dev`
+
+## Deploy on Vercel
+- Framework: Vite
+- Build command: `npm run build`
+- Output directory: `client/dist`
+- Environment variables:
+  - `VITE_API_BASE_URL` = `https://YOUR-RENDER-BACKEND.onrender.com/api`
