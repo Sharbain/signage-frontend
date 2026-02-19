@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 import { Monitor, Clock, Calendar, AlertTriangle, Play, Image, Film, FileText } from "lucide-react";
 
 type DashboardSummary = {
@@ -69,12 +70,10 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/dashboard/summary");
-        if (!res.ok) throw new Error("Failed to load dashboard summary");
-        const data: DashboardSummary = await res.json();
+        const data: DashboardSummary = await api.dashboard.summary();
         setSummary(data);
 
-        const devicesRes = await fetch("/api/devices/list");
+        const devicesRes = await api.devices.list();
         if (devicesRes.ok) {
           const devicesData = await devicesRes.json();
           setDevices(devicesData.devices || []);
@@ -82,13 +81,8 @@ export default function Dashboard() {
           setDevices([]);
         }
 
-        const contentRes = await fetch("/api/dashboard/live-content");
-        if (contentRes.ok) {
-          const contentData = await contentRes.json();
-          setLiveContent(contentData.content || []);
-        } else {
-          setLiveContent([]);
-        }
+        const contentRes = await api.dashboard.liveContent();
+        setLiveContent(contentRes.content || []);
       } catch (e: any) {
         console.error(e);
         setError(e.message || "Failed to load dashboard");

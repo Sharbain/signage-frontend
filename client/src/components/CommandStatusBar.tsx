@@ -3,6 +3,7 @@ import { Progress } from "@/components/ui/progress";
 import { X, Check, Loader2, Upload, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 
 interface ActiveCommand {
   id: number;
@@ -21,11 +22,9 @@ export function CommandStatusBar() {
   const [visible, setVisible] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/commands/active"],
+    queryKey: ["commands", "active"],
     queryFn: async () => {
-      const res = await fetch("/api/commands/active");
-      if (!res.ok) throw new Error("Failed to fetch active commands");
-      return res.json();
+      return api.commands.active();
     },
     refetchInterval: 2000,
   });
