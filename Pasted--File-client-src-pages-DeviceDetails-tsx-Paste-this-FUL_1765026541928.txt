@@ -1,0 +1,196 @@
+// =========================
+// Fabric.js Canvas Setup
+// =========================
+
+let canvas = new fabric.Canvas("templateCanvas", {
+    selection: true,
+    preserveObjectStacking: true
+});
+
+canvas.setBackgroundColor("#000000", canvas.renderAll.bind(canvas));
+
+let selectedZoneObject = null;
+let savedTemplates = [];
+let currentTemplateId = null;
+
+function screenWidth() {
+    return canvas.width;
+}
+function screenHeight() {
+    return canvas.height;
+}
+
+// ==========================
+// CREATE NEW ZONE (drag+resize)
+// ==========================
+
+function addZone() {
+    const zoneName = document.getElementById("zoneName").value.trim();
+    const zoneType = document.getElementById("zoneType").value;
+
+    if (!zoneName) {
+        alert("Zone name required");
+        return;
+    }
+
+    const rect = new fabric.Rect({
+        left: 50,
+        top: 50,
+        width: 200,
+        height: 120,
+        fill: "rgba(74,124,89,0.15)",
+        stroke: "#4a7c59",
+        strokeWidth: 2,
+        transparentCorners: false,
+        hasControls: true,
+        cornerColor: "#4a7c59",
+        cornerStyle: "circle"
+    });
+
+    const label = new fabric.Text(zoneName, {
+        left: 60,
+        top: 60,
+        fontSize: 14,
+        fill: "white"
+    });
+
+    const group = new fabric.Group([rect, label], {
+        left: 50,
+        top: 50,
+        hasRotatingPoint: false
+    });
+
+    group.zone = {
+        id: "zone-" + Date.now(),
+        name: zoneName,
+        type: zoneType
+    };
+
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    selectedZoneObject = group;
+
+    updateZonePanel(group);
+
+    canvas.renderAll();
+}
+
+
+// =============================
+// ZONE SELECTION HANDLING
+// =============================
+
+canvas.on("selection:created", function (e) {
+    selectedZoneObject = e.target;
+    updateZonePanel(selectedZoneObject);
+});
+
+canvas.on("selection:updated", function (e) {
+    selectedZoneObject = e.target;
+    updateZonePanel(selectedZoneObject);
+});
+
+function updateZonePanel(obj) {
+    if (!obj || !obj.zone) {
+        document.getElementById("selectedZoneName").innerText = "None";
+        disableZoneActions();
+        return;
+    }
+
+    document.getElementById("selectedZoneName").innerText = obj.zone.name;
+    enableZoneActions();
+}
+
+function disableZoneActions() {
+    document.getElementById("btnAssignPlaylist").disabled = true;
+    document.getElementById("btnAssignRSS").disabled = true;
+    document.getElementById("btnAssignSocial").disabled = true;
+    document.getElementById("btnAssignTicker").disabled = true;
+    document.getElementById("btnDeleteZone").disabled = true;
+}
+
+function enableZoneActions() {
+    document.getElementById("btnAssignPlaylist").disabled = false;
+    document.getElementById("btnAssignRSS").disabled = false;
+    document.getElementById("btnAssignSocial").disabled = false;
+    document.getElementById("btnAssignTicker").disabled = false;
+    document.getElementById("btnDeleteZone").disabled = false;
+}
+
+
+// =============================
+// DELETE SELECTED ZONE
+// =============================
+
+document.getElementById("btnDeleteZone").onclick = function () {
+    if (selectedZoneObject) {
+        canvas.remove(selectedZoneObject);
+        selectedZoneObject = null;
+        updateZonePanel(null);
+        canvas.renderAll();
+    }
+};
+
+
+// ===============================
+// SAVE TEMPLATE (convert to zones)
+// ===============================
+
+function extractZonesFromCanvas() {
+    const zones = [];
+
+    canvas.getObjects().forEach(obj => {
+        if (!obj.zone) return;
+
+        const rect = obj._objects[0];
+        const label = obj._objects[1];
+
+        const width = rect.width * rect.scaleX;
+        const height = rect.height * rect.scaleY;
+
+        zones.push({
+            id: obj.zone.id,
+            name: obj.zone.name,
+            type: obj.zone.type,
+            x: obj.left / canvas.width * 100,
+            y: obj.top / canvas.height * 100,
+            width: width / canvas.width * 100,
+            height: height / canvas.height * 100
+        });
+    });
+
+    return zones;
+}
+
+async function saveTemplate() {
+    const tplName = document.getElementById("tplName").value.trim();
+    const tplDesc = document.getElementById("tplDescription").value.trim();
+    const tplBg = document.getElementById("tplBgColor").value;
+
+    const zones = extractZonesFromCanvas();
+
+    const payload = {
+        name: tplName,
+        description: tplDesc,
+        width: 1920,
+        height: 1080,
+        backgroundColor: tplBg,
+        zones
+    };
+
+    const method = currentTemplateId ? "PUT" : "POST";
+    const url = currentTemplateId
+        ? `/api/templates/${currentTemplateId}`
+        : `/api/templates`;
+
+    const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    alert("Template saved!");
+
+    currentTemplateId = data.template.id;
+}

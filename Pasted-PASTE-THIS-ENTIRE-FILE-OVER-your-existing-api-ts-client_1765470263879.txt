@@ -1,0 +1,77 @@
+Overwrite the Status Overview section in DeviceControlPage.tsx with this:
+
+<section className="bg-white/80 border border-slate-100 rounded-3xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+  <h2 className="text-sm font-semibold text-slate-900 mb-4">
+    Device Status
+  </h2>
+
+  <div className="grid grid-cols-2 gap-4 text-sm">
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        APK Version
+      </div>
+      <div className="text-slate-900 font-medium">{device.apkVersion}</div>
+    </div>
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        Temperature
+      </div>
+      <div className="text-slate-900 font-medium">{device.temperature}°C</div>
+    </div>
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        Storage
+      </div>
+      <div className="text-slate-900 font-medium">
+        {((device.freeStorage / device.totalStorage) * 100).toFixed(1)}% free
+      </div>
+      <div className="w-full h-2 bg-slate-200 rounded-full mt-1">
+        <div
+          className="h-2 bg-blue-600 rounded-full"
+          style={{
+            width: `${
+              (device.freeStorage / device.totalStorage) * 100
+            }%`,
+          }}
+        ></div>
+      </div>
+    </div>
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        Signal Strength
+      </div>
+      <div className="text-slate-900 font-medium">
+        {device.signalStrength} dBm
+      </div>
+    </div>
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        Local IP
+      </div>
+      <div className="text-slate-900 font-medium">{device.localIp}</div>
+    </div>
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        Public IP
+      </div>
+      <div className="text-slate-900 font-medium">{device.publicIp}</div>
+    </div>
+
+    <div>
+      <div className="text-[11px] text-slate-400 uppercase">
+        Uptime
+      </div>
+      <div className="text-slate-900 font-medium">
+        {Math.floor(device.uptime / 3600)}h {" "}
+        {Math.floor((device.uptime % 3600) / 60)}m
+      </div>
+    </div>
+
+  </div>
+</section>

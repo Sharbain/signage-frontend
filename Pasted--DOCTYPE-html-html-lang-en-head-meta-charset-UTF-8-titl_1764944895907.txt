@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Signage Admin</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, select, button { margin: 5px 0; padding: 5px; }
+    .section { margin-bottom: 30px; }
+  </style>
+</head>
+<body>
+  <h1>Digital Signage Admin</h1>
+
+  <div class="section">
+    <h2>Upload Content</h2>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" name="file" required />
+      <button type="submit">Upload</button>
+    </form>
+    <div id="uploadStatus"></div>
+  </div>
+
+  <div class="section">
+    <h2>Assign Content to Device</h2>
+    <select id="contentSelect"></select><br/>
+    <input type="text" id="deviceId" placeholder="Device ID" required /><br/>
+    <button id="assignBtn">Assign</button>
+    <div id="assignStatus"></div>
+  </div>
+
+  <script>
+    // Fetch content list
+    async function loadContent() {
+      const res = await fetch("/api/content");
+      const data = await res.json();
+      const select = document.getElementById("contentSelect");
+      select.innerHTML = "";
+      data.forEach(file => {
+        const option = document.createElement("option");
+        option.value = file.name;
+        option.textContent = file.name;
+        select.appendChild(option);
+      });
+    }
+
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById("fileInput");
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      document.getElementById("uploadStatus").textContent = data.message || data.error;
+      loadContent();
+    });
+
+    document.getElementById("assignBtn").addEventListener("click", async () => {
+      const deviceId = document.getElementById("deviceId").value;
+      const contentName = document.getElementById("contentSelect").value;
+
+      const res = await fetch("/api/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, contentName })
+      });
+      const data = await res.json();
+      document.getElementById("assignStatus").textContent = data.message || data.error;
+    });
+
+    loadContent();
+  </script>
+</body>
+</html>

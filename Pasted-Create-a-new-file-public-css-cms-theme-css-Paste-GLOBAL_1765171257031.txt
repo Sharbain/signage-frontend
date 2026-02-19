@@ -1,0 +1,161 @@
+At the bottom of devices.html, before </body>:
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const $tree = $('#deviceTree');
+
+  function loadTree() {
+    fetch('/api/devices/tree')
+      .then(res => res.json())
+      .then(data => {
+        $tree
+          .jstree('destroy')   // reset if already created
+          .jstree({
+            core: {
+              data: data,
+              check_callback: true,   // allow moves/renames
+              themes: { stripes: true }
+            },
+            types: {
+              root:   { icon: 'fas fa-home text-green-700' },
+              group:  { icon: 'fas fa-folder' },   // overridden by node.icon if present
+              device: { icon: 'fas fa-tv' }        // overridden by node.icon if present
+            },
+            plugins: ['dnd', 'types', 'contextmenu', 'wholerow'],
+            contextmenu: {
+              items: function(node) {
+                const items = {};
+                if (node.original.type === 'group' || node.original.type === 'root') {
+                  items.createGroup = {
+                    label: 'New Group',
+                    action: () => createGroup(node.id)
+                  };
+                  items.changeIcon = {
+                    label: 'Change Icon',
+                    action: () => openGroupIconDialog(node.id)
+                  };
+                }
+                if (node.original.type === 'group') {
+                  items.rename = {
+                    label: 'Rename',
+                    action: () => $tree.jstree('edit', node)
+                  };
+                  items.delete = {
+                    label: 'Delete Group',
+                    action: () => deleteGroup(node.id)
+                  };
+                }
+                if (node.original.type === 'device') {
+                  items.moveToRoot = {
+                    label: 'Move to Home',
+                    action: () => moveDevice(node.id, 'root-pdn')
+                  };
+                }
+                return items;
+              }
+            }
+          });
+      });
+  }
+
+  // When user selects a node
+  $tree.on('select_node.jstree', (e, data) => {
+    const node = data.node;
+    const type = node.original.type;
+
+    if (type === 'device') {
+      loadDeviceControl(node.id);
+    } else {
+      document.getElementById('treeInfo').textContent =
+        `Group: ${node.text} (ID: ${node.id})`;
+    }
+  });
+
+  // When user drags a node (group or device) somewhere else
+  $tree.on('move_node.jstree', (e, data) => {
+    const node = data.node;
+    const newParent = data.parent;
+    const type = node.original.type;
+
+    if (type === 'device') {
+      moveDevice(node.id, newParent);
+    } else if (type === 'group') {
+      moveGroup(node.id, newParent);
+    }
+  });
+
+  // Initial load
+  loadTree();
+
+  // --------- API helpers ----------
+
+  function createGroup(parentId) {
+    const name = prompt('Group name?');
+    if (!name) return;
+    fetch('/api/device-groups', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, parentId })
+    }).then(() => loadTree());
+  }
+
+  function deleteGroup(groupId) {
+    if (!confirm('Delete this group and detach its devices?')) return;
+    fetch(`/api/device-groups/${groupId}`, { method: 'DELETE' })
+      .then(() => loadTree());
+  }
+
+  function moveGroup(id, newParentId) {
+    fetch(`/api/device-groups/${id}/move`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ parentId: newParentId })
+    });
+  }
+
+  function moveDevice(deviceId, newGroupId) {
+    fetch(`/api/devices/${deviceId}/move`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ groupId: newGroupId })
+    });
+  }
+
+  function loadDeviceControl(deviceId) {
+    // call your existing API to populate the right-side panel
+    // Example:
+    fetch(`/api/devices/${deviceId}`)
+      .then(res => res.json())
+      .then(device => {
+        // fill in the Device Control panel fields with device info
+        document.querySelector('#deviceIdLabel').textContent = device.id;
+        document.querySelector('#deviceStatusLabel').textContent = device.status;
+        // etc…
+      });
+  }
+
+  // ------ Group icon (picture) upload ------
+  function openGroupIconDialog(groupId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      const form = new FormData();
+      form.append('icon', file);
+      fetch(`/api/device-groups/${groupId}/icon`, {
+        method: 'POST',
+        body: form
+      }).then(() => loadTree());
+    };
+    input.click();
+  }
+
+  // Button "New Group" at top of tree
+  document.getElementById('btnNewGroup').addEventListener('click', () => {
+    // create new child of root (PDN) by default
+    createGroup('root-pdn');
+  });
+});
+</script>

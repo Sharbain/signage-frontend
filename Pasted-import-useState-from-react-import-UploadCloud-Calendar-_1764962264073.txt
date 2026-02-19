@@ -1,0 +1,83 @@
+import { useState } from "react";
+import { Plus, Save, Play } from "lucide-react";
+
+export default function TemplateDesigner() {
+  const [elements, setElements] = useState([
+    { id: 1, type: "Text", content: "Welcome!", x: 50, y: 50 },
+    { id: 2, type: "Image", content: "https://via.placeholder.com/150", x: 200, y: 100 },
+  ]);
+
+  const addElement = (type) => {
+    const newId = elements.length + 1;
+    const newElement = { id: newId, type, content: type === "Text" ? "New Text" : "https://via.placeholder.com/100", x: 50, y: 50 };
+    setElements([...elements, newElement]);
+  };
+
+  return (
+    <div className="p-6">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-bold gradient-text">Template Designer</h1>
+        <div className="flex gap-2">
+          <button className="button-gradient flex items-center gap-2">
+            <Save size={18} /> Save
+          </button>
+          <button className="button-gradient flex items-center gap-2">
+            <Play size={18} /> Preview
+          </button>
+        </div>
+      </div>
+
+      {/* LEFT TOOLBAR */}
+      <div className="flex gap-6">
+
+        <div className="flex flex-col gap-4 glass p-4 w-48">
+          <h2 className="font-semibold mb-2">Add Elements</h2>
+          <button className="button-gradient flex items-center gap-2" onClick={() => addElement("Text")}>
+            <Plus size={16} /> Text
+          </button>
+          <button className="button-gradient flex items-center gap-2" onClick={() => addElement("Image")}>
+            <Plus size={16} /> Image
+          </button>
+          <button className="button-gradient flex items-center gap-2" onClick={() => addElement("Video")}>
+            <Plus size={16} /> Video
+          </button>
+          <button className="button-gradient flex items-center gap-2" onClick={() => addElement("RSS")}>
+            <Plus size={16} /> RSS Feed
+          </button>
+          <button className="button-gradient flex items-center gap-2" onClick={() => addElement("Social")}>
+            <Plus size={16} /> Social Feed
+          </button>
+        </div>
+
+        {/* CANVAS */}
+        <div className="flex-1 glass p-4 relative h-[600px] border border-white/20">
+          {elements.map((el) => (
+            <div
+              key={el.id}
+              className="absolute border border-white/30 p-2 rounded-lg cursor-move"
+              style={{ top: el.y, left: el.x }}
+              draggable
+              onDragEnd={(e) => {
+                const newElements = elements.map((item) =>
+                  item.id === el.id
+                    ? { ...item, x: e.pageX - 100, y: e.pageY - 100 }
+                    : item
+                );
+                setElements(newElements);
+              }}
+            >
+              {el.type === "Text" && <span>{el.content}</span>}
+              {el.type === "Image" && <img src={el.content} className="w-32 h-20 object-cover" />}
+              {el.type === "Video" && <div className="w-32 h-20 bg-gray-700 flex items-center justify-center text-white">Video</div>}
+              {el.type === "RSS" && <div className="text-sm opacity-70">RSS Feed Block</div>}
+              {el.type === "Social" && <div className="text-sm opacity-70">Social Feed Block</div>}
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  );
+}

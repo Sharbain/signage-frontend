@@ -1,0 +1,89 @@
+// server.js
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const { createClient } = require("@supabase/supabase-js");
+require("dotenv").config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Supabase setup
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
+
+// Multer setup for file uploads
+const upload = multer({ dest: "uploads/" });
+
+// -------------------- Routes --------------------
+
+// Register user
+app.post("/api/auth/register", async (req, res) => {
+  const { email, password } = req.body;
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: "User registered", data });
+});
+
+// Login user
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: "Logged in", data });
+});
+
+// Upload content
+app.post("/api/upload", upload.single("file"), async (req, res) => {
+  try {
+    const file = req.file;
+    const filePath = `content/${file.originalname}`;
+
+    const fileStream = fs.createReadStream(file.path);
+    const { data, error } = await supabase.storage.from("content").upload(filePath, fileStream);
+
+    // Remove temp file
+    fs.unlinkSync(file.path);
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ message: "File uploaded", data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List all uploaded content
+app.get("/api/content", async (req, res) => {
+  const { data, error } = await supabase.storage.from("content").list();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
+// Assign content to a device
+app.post("/api/assign", async (req, res) => {
+  const { deviceId, contentName } = req.body;
+  const { data, error } = await supabase.from("assignments").insert([{ device_id: deviceId, content_name: contentName }]);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: "Content assigned", data });
+});
+
+// Fetch playlist for a device
+app.get("/api/playlist/:deviceId", async (req, res) => {
+  const { deviceId } = req.params;
+  const { data, error } = await supabase.from("assignments").select("*").eq("device_id", deviceId);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
+// Serve admin page
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});

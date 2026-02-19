@@ -1,0 +1,179 @@
+Create a new file:
+
+/public/css/cms-theme.css
+
+
+Paste:
+
+/* GLOBAL COLOR PALETTE */
+:root {
+    --primary: #4a7c59;
+    --primary-dark: #3c6447;
+    --accent: #2196f3;
+    --danger: #e53935;
+    --warning: #ff9800;
+    --success: #43a047;
+    --surface: #ffffff;
+    --surface-alt: #f5f6f7;
+    --border: #e1e4e8;
+    --text: #333;
+    --text-light: #555;
+    --radius: 10px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* UNIVERSAL RESET */
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: var(--surface-alt);
+    color: var(--text);
+    margin: 0;
+}
+
+/* HEADINGS */
+h1, h2, h3, h4 {
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+/* BUTTONS */
+button, .btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.25s;
+}
+button:hover, .btn:hover {
+    background: var(--primary-dark);
+    box-shadow: var(--shadow);
+}
+
+.btn-secondary {
+    background: #e0e0e0;
+    color: #333;
+}
+.btn-secondary:hover {
+    background: #d5d5d5;
+}
+
+.btn-danger {
+    background: var(--danger);
+}
+.btn-accent {
+    background: var(--accent);
+}
+
+/* INPUTS + SELECTS */
+input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #fff;
+    margin-top: 6px;
+    transition: 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(74,124,89,0.2);
+}
+
+/* CARDS */
+.card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+/* TABLES */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+th {
+    background: var(--surface-alt);
+    font-weight: 600;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+}
+tr:hover {
+    background: #fafafa;
+}
+
+/* MODALS */
+.modal-overlay {
+    position: fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background: rgba(0,0,0,0.55);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    animation: fadeIn 0.25s ease;
+}
+.modal-window {
+    background:#fff;
+    padding:25px;
+    border-radius:var(--radius);
+    width:750px;
+    max-height:90vh;
+    overflow-y:auto;
+    box-shadow: var(--shadow);
+    animation: zoomIn 0.25s ease;
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+    from { opacity:0; }
+    to { opacity:1; }
+}
+@keyframes zoomIn {
+    from { transform:scale(0.95); opacity:0; }
+    to { transform:scale(1); opacity:1; }
+}
+
+/* BADGES */
+.badge {
+    padding:2px 8px;
+    border-radius:6px;
+    font-size:12px;
+    color:#fff;
+}
+.badge-success { background: var(--success); }
+.badge-danger { background: var(--danger); }
+.badge-warning { background: var(--warning); }
+
+/* STATUS DOTS */
+.status-dot {
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    display:inline-block;
+    margin-right:6px;
+}
+.status-online { background:var(--success); }
+.status-offline { background:var(--danger); }
+
+/* SMOOTH TRANSITIONS */
+a, button, input, table tr {
+    transition: 0.25s ease;
+}

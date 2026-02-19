@@ -1,0 +1,71 @@
+import { useState } from "react";
+import { UploadCloud, Calendar, Plus } from "lucide-react";
+
+export default function ContentScheduler() {
+  const [search, setSearch] = useState("");
+
+  const contentList = [
+    { name: "Promo Video", type: "Video", duration: "00:30", status: "Scheduled" },
+    { name: "Sale Banner", type: "Image", duration: "N/A", status: "Published" },
+    { name: "Instagram Feed", type: "RSS", duration: "Continuous", status: "Scheduled" },
+  ];
+
+  return (
+    <div className="p-6">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-bold gradient-text">Content Scheduler</h1>
+        <button className="button-gradient flex items-center gap-2">
+          <Plus size={18} /> Add Content
+        </button>
+      </div>
+
+      {/* SEARCH & FILTER */}
+      <div className="flex gap-4 mb-6 flex-wrap">
+        <input
+          type="text"
+          placeholder="Search content…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="glass p-3 rounded-lg w-64 text-white border border-white/30 bg-white/20"
+        />
+        <button className="button-gradient px-6 py-2 flex items-center gap-2">
+          <UploadCloud size={16} /> Upload
+        </button>
+        <button className="glass px-6 py-2 flex items-center gap-2">
+          <Calendar size={16} /> Calendar View
+        </button>
+      </div>
+
+      {/* CONTENT GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {contentList.map((c, i) => (
+          <div key={i} className="glass p-5 flex flex-col gap-3">
+            <h2 className="text-xl font-semibold">{c.name}</h2>
+            <p className="text-sm opacity-70">Type: {c.type}</p>
+            <p className="text-sm opacity-70">Duration: {c.duration}</p>
+            <p className={`text-sm font-medium ${c.status === "Scheduled" ? "text-blue-400" : "text-green-300"}`}>
+              {c.status}
+            </p>
+
+            <button className="button-gradient mt-4 py-2">Edit Schedule</button>
+          </div>
+        ))}
+      </div>
+
+      {/* HOURLY SCHEDULE PREVIEW */}
+      <div className="glass mt-8 p-6">
+        <h2 className="text-2xl font-semibold gradient-text mb-4">Hourly Schedule</h2>
+        <div className="grid grid-cols-6 gap-2 text-sm text-white">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div key={i} className="glass p-2 text-center">
+              {i}:00
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}
