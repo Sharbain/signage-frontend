@@ -4,9 +4,17 @@
 // Configure API base via Vite env.
 // - In production (recommended): set VITE_API_BASE_URL=https://your-backend-domain.com
 // - In dev with proxy: leave unset to use relative /api
-const ROOT = (import.meta as any).env?.VITE_API_BASE_URL
+// Configure API base via Vite env.
+// You can set VITE_API_BASE_URL to either:
+// - https://your-backend-domain.com
+// - https://your-backend-domain.com/api
+// We'll normalize it safely.
+let ROOT = (import.meta as any).env?.VITE_API_BASE_URL
   ? String((import.meta as any).env.VITE_API_BASE_URL).replace(/\/$/, "")
   : "";
+
+// If someone sets .../api, strip it to avoid /api/api duplication.
+ROOT = ROOT.replace(/\/api$/i, "");
 
 // If ROOT is empty, we fall back to relative '/api' (works only if you proxy/rewite in dev/prod).
 export const API_BASE = ROOT ? `${ROOT}/api` : "/api";
