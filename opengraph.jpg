@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Digital Signage Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #000;
+            overflow: hidden;
+            cursor: none;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        #display {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #display.visible {
+            opacity: 1;
+        }
+        #video-display {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #06b6d4;
+            text-align: center;
+        }
+        .loading h2 {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 0.2em;
+            margin-bottom: 1rem;
+        }
+        .loading p {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.875rem;
+        }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(6, 182, 212, 0.2);
+            border-top-color: #06b6d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #progress-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: #06b6d4;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        #debug-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 16px;
+            color: rgba(255,255,255,0.8);
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            min-width: 200px;
+            display: none;
+        }
+        #debug-overlay.visible {
+            display: block;
+        }
+        #debug-overlay h3 {
+            color: #06b6d4;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .debug-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .debug-row span:first-child {
+            color: rgba(255,255,255,0.5);
+        }
+        .debug-row span:last-child {
+            color: #fff;
+        }
+        .status-online {
+            color: #22c55e !important;
+        }
+        #clock {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: none;
+        }
+        #clock.visible {
+            display: block;
+        }
+        #no-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            display: none;
+        }
+        #no-content h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #06b6d4;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <h2>LUMINA PLAYER</h2>
+            <p id="loading-text">Connecting to server...</p>
+        </div>
+        <img id="display" alt="Content">
+        <video id="video-display" autoplay muted></video>
+        <div id="no-content">
+            <h2>No Content Available</h2>
+            <p>Add media in the dashboard to display here</p>
+        </div>
+    </div>
+    
+    <div id="debug-overlay">
+        <h3>DEBUG INFO</h3>
+        <div class="debug-row">
+            <span>STATUS:</span>
+            <span id="debug-status" class="status-online">CONNECTED</span>
+        </div>
+        <div class="debug-row">
+            <span>CONTENT:</span>
+            <span id="debug-content">Loading...</span>
+        </div>
+        <div class="debug-row">
+            <span>SLIDE:</span>
+            <span id="debug-slide">0 / 0</span>
+        </div>
+        <div class="debug-row">
+            <span>NEXT:</span>
+            <span id="debug-next">--</span>
+        </div>
+    </div>
+    
+    <div id="clock"></div>
+    <div id="progress-bar"></div>
+
+    <script>
+    const BASE_URL = window.location.origin;
+    const REFRESH_INTERVAL = 60000; // Check for new content every 60 seconds
+    const DEFAULT_DURATION = 10; // Default slide duration in seconds
+    
+    let contentList = [];
+    let currentIndex = 0;
+    let slideTimer = null;
+    let progressTimer = null;
+    let progress = 0;
+    let showDebug = true;
+    let showClock = true;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('keydown', handleKeyPress);
+
+    function handleKeyPress(e) {
+        if (e.key === 'd' || e.key === 'D') {
+            showDebug = !showDebug;
+            document.getElementById('debug-overlay').classList.toggle('visible', showDebug);
+        }
+        if (e.key === 'c' || e.key === 'C') {
+            showClock = !showClock;
+            document.getElementById('clock').classList.toggle('visible', showClock);
+        }
+        if (e.key === 'f' || e.key === 'F') {
+            toggleFullscreen();
+        }
+    }
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    async function init() {
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        await fetchContent();
+        
+        // Periodically check for new content
+        setInterval(fetchContent, REFRESH_INTERVAL);
+    }
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent = 
+            now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function fetchContent() {
+        try {
+            document.getElementById('loading-text').textContent = 'Fetching content...';
+            
+            const res = await fetch(BASE_URL + '/api/content');
+            const data = await res.json();
+            
+            if (data.content && data.content.length > 0) {
+                contentList = data.content;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('no-content').style.display = 'none';
+                document.getElementById('debug-overlay').classList.toggle('visible', showDebug);
+                document.getElementById('clock').classList.toggle('visible', showClock);
+                
+                if (!slideTimer) {
+                    showContent(0);
+                }
+            } else {
+                // No content available
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('no-content').style.display = 'block';
+                document.getElementById('debug-content').textContent = 'None';
+                document.getElementById('debug-slide').textContent = '0 / 0';
+            }
+        } catch (error) {
+            console.error('Failed to fetch content:', error);
+            document.getElementById('loading-text').textContent = 'Connection failed. Retrying...';
+            document.getElementById('debug-status').textContent = 'OFFLINE';
+            document.getElementById('debug-status').classList.remove('status-online');
+            setTimeout(fetchContent, 5000);
+        }
+    }
+
+    function showContent(index) {
+        if (contentList.length === 0) return;
+        
+        currentIndex = index % contentList.length;
+        const item = contentList[currentIndex];
+        const duration = (item.duration || DEFAULT_DURATION) * 1000;
+        
+        // Update debug info
+        document.getElementById('debug-content').textContent = item.name || 'Untitled';
+        document.getElementById('debug-slide').textContent = `${currentIndex + 1} / ${contentList.length}`;
+        
+        // Clear existing timers
+        if (slideTimer) clearTimeout(slideTimer);
+        if (progressTimer) clearInterval(progressTimer);
+        
+        const display = document.getElementById('display');
+        const videoDisplay = document.getElementById('video-display');
+        
+        if (item.type === 'video') {
+            display.style.display = 'none';
+            display.classList.remove('visible');
+            videoDisplay.style.display = 'block';
+            videoDisplay.src = item.url;
+            videoDisplay.play();
+        } else {
+            videoDisplay.style.display = 'none';
+            videoDisplay.pause();
+            display.style.display = 'block';
+            display.classList.remove('visible');
+            display.src = item.url;
+            display.onload = () => display.classList.add('visible');
+        }
+        
+        // Progress bar
+        progress = 0;
+        const progressBar = document.getElementById('progress-bar');
+        const progressStep = 100 / (duration / 100);
+        
+        progressTimer = setInterval(() => {
+            progress += progressStep;
+            progressBar.style.width = Math.min(progress, 100) + '%';
+            
+            const remaining = Math.ceil((100 - progress) / progressStep / 10);
+            document.getElementById('debug-next').textContent = remaining + 's';
+        }, 100);
+        
+        // Next slide
+        slideTimer = setTimeout(() => {
+            showContent(currentIndex + 1);
+        }, duration);
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Digital Signage API Test</title>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #06b6d4;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            color: #94a3b8;
+            font-size: 1rem;
+            margin-top: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        button {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #334155;
+            border-color: #06b6d4;
+        }
+        button.primary {
+            background: #06b6d4;
+            color: #0f172a;
+            border-color: #06b6d4;
+        }
+        button.primary:hover {
+            background: #22d3ee;
+        }
+        #output {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            min-height: 100px;
+            overflow-x: auto;
+        }
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        .status.success { background: #065f46; color: #6ee7b7; }
+        .status.error { background: #7f1d1d; color: #fca5a5; }
+        .token-display {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            word-break: break-all;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Digital Signage API Test</h1>
+    
+    <div id="tokenStatus"></div>
+    
+    <h2>Authentication</h2>
+    <div class="button-group">
+        <button class="primary" onclick="registerUser()">Register Test User</button>
+        <button class="primary" onclick="loginUser()">Login Test User</button>
+    </div>
+
+    <h2>Screens</h2>
+    <div class="button-group">
+        <button onclick="getScreens()">Get All Screens</button>
+        <button onclick="createScreen()">Create Test Screen</button>
+    </div>
+
+    <h2>Media</h2>
+    <div class="button-group">
+        <button onclick="getMedia()">Get All Media</button>
+        <button onclick="createMedia()">Create Test Media</button>
+    </div>
+
+    <h2>Response</h2>
+    <div id="output">Click a button to test an API endpoint...</div>
+
+    <script>
+    const BASE_URL = window.location.origin;
+    let token = localStorage.getItem('testToken') || '';
+    
+    updateTokenStatus();
+
+    function updateTokenStatus() {
+        const el = document.getElementById('tokenStatus');
+        if (token) {
+            el.innerHTML = '<div class="status success">Logged in</div><div class="token-display">Token: ' + token.substring(0, 50) + '...</div>';
+        } else {
+            el.innerHTML = '<div class="status error">Not logged in</div>';
+        }
+    }
+
+    function showOutput(data, isError = false) {
+        const el = document.getElementById('output');
+        el.style.borderColor = isError ? '#ef4444' : '#06b6d4';
+        el.innerText = JSON.stringify(data, null, 2);
+    }
+
+    async function registerUser() {
+        try {
+            const res = await fetch(BASE_URL + '/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: 'test@example.com', password: '123456'})
+            });
+            const data = await res.json();
+            showOutput(data, !res.ok);
+        } catch (err) {
+            showOutput({error: err.message}, true);
+        }
+    }
+
+    async function loginUser() {
+        try {
+            const res = await fetch(BASE_URL + '/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: 'test@example.com', password: '123456'})
+            });
+            const data = await res.json();
+            if (data.accessToken) {
+                token = data.accessToken;
+                localStorage.setItem('testToken', token);
+                updateTokenStatus();
+            }
+            showOutput(data, !res.ok);
+        } catch (err) {
+            showOutput({error: err.message}, true);
+        }
+    }
+
+    async function getScreens() {
+        try {
+            const res = await fetch(BASE_URL + '/api/screens');
+            const data = await res.json();
+            showOutput(data, !res.ok);
+        } catch (err) {
+            showOutput({error: err.message}, true);
+        }
+    }
+
+    async function createScreen() {
+        try {
+            const res = await fetch(BASE_URL + '/api/screens', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    deviceId: 'TEST-' + Date.now(),
+                    name: 'Test Screen',
+                    location: 'Test Location',
+                    status: 'online',
+                    resolution: '1920x1080'
+                })
+            });
+            const data = await res.json();
+            showOutput(data, !res.ok);
+        } catch (err) {
+            showOutput({error: err.message}, true);
+        }
+    }
+
+    async function getMedia() {
+        try {
+            const res = await fetch(BASE_URL + '/api/media');
+            const data = await res.json();
+            showOutput(data, !res.ok);
+        } catch (err) {
+            showOutput({error: err.message}, true);
+        }
+    }
+
+    async function createMedia() {
+        try {
+            const res = await fetch(BASE_URL + '/api/media', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: 'Test Media ' + Date.now(),
+                    type: 'image',
+                    url: 'https://example.com/test-image.jpg',
+                    size: 1024000
+                })
+            });
+            const data = await res.json();
+            showOutput(data, !res.ok);
+        } catch (err) {
+            showOutput({error: err.message}, true);
+        }
+    }
+    </script>
+</body>
+</html>
