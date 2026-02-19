@@ -13,6 +13,7 @@ import TemplateDesigner from "./pages/TemplateDesigner";
 import SchedulePage from "./pages/SchedulePage";
 import MonitorPage from "./pages/Monitor";
 import ClientsPage from "./pages/ClientsPage";
+import AdminUsers from "./pages/AdminUsers";
 import ClientDetailPage from "./pages/ClientDetailPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
 import DevicesLayout from "./layouts/DevicesLayout";
@@ -224,6 +225,18 @@ function App() {
           element={
             <RequireAuth>
               <Navigate to="/devices" replace />
+            </RequireAuth>
+          }
+        />
+
+
+        <Route
+          path="/admin/users"
+          element={
+            <RequireAuth>
+              <Shell>
+                <AdminUsers />
+              </Shell>
             </RequireAuth>
           }
         />

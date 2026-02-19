@@ -131,4 +131,26 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+
+  admin: {
+    users: {
+      list: async () => {
+        const res = await authorizedFetch(`${API_BASE}/admin/users`, { method: "GET" });
+        return jsonOrThrow(res, "Failed to list users");
+      },
+      create: async (data: { email: string; password: string; role?: string; name?: string }) => {
+        const res = await authorizedFetch(`${API_BASE}/admin/users`, {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        return jsonOrThrow(res, "Failed to create user");
+      },
+    },
+    screens: {
+      rotateToken: async (id: number) => {
+        const res = await authorizedFetch(`${API_BASE}/admin/screens/${id}/rotate-token`, { method: "POST" });
+        return jsonOrThrow(res, "Failed to rotate device token");
+      },
+    },
+  },
 };

@@ -1,5 +1,5 @@
 Changed files:
-MODIFIED: client/src/components/CommandStatusBar.tsx
+MODIFIED: client/src/App.tsx
+MODIFIED: client/src/components/Sidebar.tsx
 MODIFIED: client/src/lib/api.ts
-MODIFIED: client/src/pages/Dashboard.tsx
-MODIFIED: client/src/pages/Login.tsx
+ADDED: client/src/pages/AdminUsers.tsx

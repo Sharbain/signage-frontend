@@ -9,6 +9,7 @@ export default function Sidebar() {
     { label: "Schedule", icon: CalendarDays, path: "/schedule", external: false },
     { label: "Monitor", icon: Activity, path: "/monitor", external: false },
     { label: "Clients", icon: Users, path: "/clients", external: false },
+    { label: "Admin Users", icon: Users, path: "/admin/users", external: false },
   ];
 
   return (
