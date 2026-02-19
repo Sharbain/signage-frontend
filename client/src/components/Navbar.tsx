@@ -14,11 +14,17 @@ export default function Navbar() {
         </button>
         <button className="p-2 hover:bg-[#f5f5f0] rounded-lg transition">
           <User className="w-5 h-5 text-[#6b6b6b]" />
-        </button>
-        <button className="px-4 py-2 rounded-lg flex items-center gap-2 bg-[#5b7a5b] text-white hover:bg-[#4a6349] transition">
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
+        <button
+  type="button"
+  onClick={() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  }}
+>
+  Logout
+</button>
       </div>
     </div>
   );
