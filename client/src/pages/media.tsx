@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, Trash2, Send, Image as ImageIcon, Film, X, Loader2 } from "lucide-react";
+import { API_BASE, authorizedFetch } from "@/lib/api";
 
 interface MediaItem {
   id: number;
@@ -158,9 +159,8 @@ export default function Media() {
     try {
       if (pushTarget === "device") {
         const device = devices.find(d => d.id === selectedDevice);
-        const res = await fetch(`/api/device/${selectedDevice}/command`, {
+        const res = await authorizedFetch(`${API_BASE}/admin/devices/${selectedDevice}/command`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "PLAY_CONTENT",
             contentId: selectedMedia.id,

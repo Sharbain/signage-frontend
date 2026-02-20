@@ -22,6 +22,7 @@ import { UploadCloud, Plus, Trash2, Send, Image as ImageIcon, Film, Loader2, Sea
 import { useNavigate } from "react-router-dom";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { API_BASE, authorizedFetch } from "@/lib/api";
 
 interface MediaItem {
   id: number;
@@ -307,9 +308,8 @@ export default function ContentScheduler() {
 
     setPushing(true);
     try {
-      const res = await fetch(`/api/device/${selectedDevice}/command`, {
+      const res = await authorizedFetch(`${API_BASE}/admin/devices/${selectedDevice}/command`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "PLAY_CONTENT",
           contentId: selectedMedia.id,
