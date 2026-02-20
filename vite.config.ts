@@ -26,7 +26,7 @@ export default defineConfig(async ({ mode }) => {
     const { visualizer } = await import("rollup-plugin-visualizer");
     plugins.push(
       visualizer({
-        filename: "bundle.html", // will be placed in client/dist/
+        filename: "bundle.html", // emitted into client/dist/
         open: true,
         gzipSize: true,
         brotliSize: true,
@@ -55,33 +55,37 @@ export default defineConfig(async ({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
 
-      // ✅ KEY FIX: split heavy deps out of the main chunk
+      // ✅ REAL FIX: function-based chunking (reliable with custom root / monorepo layouts)
       rollupOptions: {
         output: {
-          manualChunks: {
-            // Leaflet is your biggest offender
-            leaflet: ["leaflet", "leaflet.markercluster"],
+          manualChunks(id) {
+            // 🗺️ Leaflet + markercluster (biggest offender)
+            if (id.includes("leaflet") || id.includes("markercluster")) {
+              return "leaflet";
+            }
 
-            // Common “big-ish” dashboard deps
-            reactVendor: ["react", "react-dom", "react-router-dom"],
+            // ⚛️ React core + router
+            if (
+              id.includes("react-dom") ||
+              id.includes("react-router-dom") ||
+              id.includes("/react/") ||
+              id.includes("\\react\\")
+            ) {
+              return "react-vendor";
+            }
 
-            // UI libs (Radix shows up heavily in your treemap)
-            radix: [
-              "@radix-ui/react-dialog",
-              "@radix-ui/react-select",
-              "@radix-ui/react-slider",
-              "@radix-ui/react-tabs",
-              "@radix-ui/react-popover",
-              "@radix-ui/react-tooltip",
-              "@radix-ui/react-dropdown-menu",
-              "@radix-ui/react-scroll-area",
-              "@radix-ui/react-switch",
-              "@radix-ui/react-checkbox",
-              "@radix-ui/react-progress",
-            ],
+            // 🎛️ Radix UI
+            if (id.includes("@radix-ui")) {
+              return "radix";
+            }
 
-            // Data helpers that can add up
-            date: ["date-fns"],
+            // 📅 date-fns
+            if (id.includes("date-fns")) {
+              return "date-fns";
+            }
+
+            // 🧩 (optional) tanstack/query libs (uncomment if you want it split too)
+            // if (id.includes("@tanstack")) return "tanstack";
           },
         },
       },
