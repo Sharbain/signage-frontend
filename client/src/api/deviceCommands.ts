@@ -1,3 +1,4 @@
+import { API_BASE, authorizedFetch } from "../lib/api";
 export type DeviceCommandType =
   | "SET_BRIGHTNESS"
   | "SET_VOLUME"
@@ -23,11 +24,8 @@ export async function sendDeviceCommand({
       ? { type, value }
       : { type };
 
-  const res = await fetch(`/api/device/${deviceId}/command`, {
+  const res = await authorizedFetch(`${API_BASE}/admin/devices/${deviceId}/command`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(body),
   });
 
