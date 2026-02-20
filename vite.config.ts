@@ -31,7 +31,7 @@ export default defineConfig(async ({ mode }) => {
         gzipSize: true,
         brotliSize: true,
         template: "treemap",
-        emitFile: true, // ⭐ CRITICAL FIX — guarantees file generation
+        emitFile: true, // guarantees file generation
       }),
     );
   }
@@ -54,6 +54,37 @@ export default defineConfig(async ({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
+
+      // ✅ KEY FIX: split heavy deps out of the main chunk
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Leaflet is your biggest offender
+            leaflet: ["leaflet", "leaflet.markercluster"],
+
+            // Common “big-ish” dashboard deps
+            reactVendor: ["react", "react-dom", "react-router-dom"],
+
+            // UI libs (Radix shows up heavily in your treemap)
+            radix: [
+              "@radix-ui/react-dialog",
+              "@radix-ui/react-select",
+              "@radix-ui/react-slider",
+              "@radix-ui/react-tabs",
+              "@radix-ui/react-popover",
+              "@radix-ui/react-tooltip",
+              "@radix-ui/react-dropdown-menu",
+              "@radix-ui/react-scroll-area",
+              "@radix-ui/react-switch",
+              "@radix-ui/react-checkbox",
+              "@radix-ui/react-progress",
+            ],
+
+            // Data helpers that can add up
+            date: ["date-fns"],
+          },
+        },
+      },
     },
     server: {
       host: "0.0.0.0",
