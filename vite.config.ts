@@ -24,17 +24,31 @@ export default defineConfig(async ({ mode }) => {
       : []),
   ];
 
-  // ✅ ENABLE ANALYZER WHEN MODE = analyze
-  if (mode === "analyze") {
+  // 🔎 DEBUG: prove which mode Vite is using and where it's running from
+  console.log("\n================ VITE CONFIG DEBUG ================");
+  console.log("mode:", mode);
+  console.log("cwd:", process.cwd());
+  console.log("config dir:", import.meta.dirname);
+  console.log("ANALYZE env:", process.env.ANALYZE);
+  console.log("===================================================\n");
+
+  // ✅ Enable analyzer in analyze mode OR when ANALYZE=true
+  if (mode === "analyze" || process.env.ANALYZE === "true") {
+    console.log("✅ Analyzer enabled. Writing bundle.html...");
     const { visualizer } = await import("rollup-plugin-visualizer");
+
     plugins.push(
       visualizer({
+        // FORCE OUTPUT: write to repo root so you can find it
         filename: path.resolve(import.meta.dirname, "bundle.html"),
-        open: true,
+        open: false, // we'll open it manually
         gzipSize: true,
         brotliSize: true,
+        template: "treemap",
       }),
     );
+  } else {
+    console.log("❌ Analyzer NOT enabled.");
   }
 
   return {
