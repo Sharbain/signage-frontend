@@ -11,44 +11,28 @@ export default defineConfig(async ({ mode }) => {
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ];
 
-  // 🔎 DEBUG: prove which mode Vite is using and where it's running from
-  console.log("\n================ VITE CONFIG DEBUG ================");
-  console.log("mode:", mode);
-  console.log("cwd:", process.cwd());
-  console.log("config dir:", import.meta.dirname);
-  console.log("ANALYZE env:", process.env.ANALYZE);
-  console.log("===================================================\n");
+  // Only load Replit-only dev plugins when running on Replit + not production
+  if (mode !== "production" && process.env.REPL_ID !== undefined) {
+    const { cartographer } = await import("@replit/vite-plugin-cartographer");
+    const { devBanner } = await import("@replit/vite-plugin-dev-banner");
+    plugins.push(cartographer(), devBanner());
+  }
 
-  // ✅ Enable analyzer in analyze mode OR when ANALYZE=true
-  if (mode === "analyze" || process.env.ANALYZE === "true") {
-    console.log("✅ Analyzer enabled. Writing bundle.html...");
+  // ✅ Bundle analyzer (only when you ask for it)
+  // Run: npm run build -- --mode analyze
+  if (mode === "analyze") {
     const { visualizer } = await import("rollup-plugin-visualizer");
-
     plugins.push(
       visualizer({
-        // FORCE OUTPUT: write to repo root so you can find it
         filename: path.resolve(import.meta.dirname, "bundle.html"),
-        open: false, // we'll open it manually
+        open: true,
         gzipSize: true,
         brotliSize: true,
         template: "treemap",
       }),
     );
-  } else {
-    console.log("❌ Analyzer NOT enabled.");
   }
 
   return {
@@ -61,7 +45,9 @@ export default defineConfig(async ({ mode }) => {
       },
     },
     css: {
-      postcss: { plugins: [] },
+      postcss: {
+        plugins: [],
+      },
     },
     root: path.resolve(import.meta.dirname, "client"),
     build: {
@@ -71,7 +57,10 @@ export default defineConfig(async ({ mode }) => {
     server: {
       host: "0.0.0.0",
       allowedHosts: true,
-      fs: { strict: true, deny: ["**/.*"] },
+      fs: {
+        strict: true,
+        deny: ["**/.*"],
+      },
     },
   };
 });
