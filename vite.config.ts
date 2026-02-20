@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
   plugins: [
@@ -11,6 +12,16 @@ export default defineConfig({
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),
+
+    // ✅ Generates bundle.html when you run `npm run build`
+    // (Does NOT affect runtime; just helps us see what's big.)
+    visualizer({
+      filename: "bundle.html",
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+    }),
+
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -39,6 +50,17 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+
+    // ✅ Optional: better default chunking to reduce the single giant bundle warning
+    // We will refine this AFTER we inspect bundle.html
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom"],
+          router: ["react-router-dom"],
+        },
+      },
+    },
   },
   server: {
     host: "0.0.0.0",
