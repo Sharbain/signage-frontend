@@ -1,3 +1,4 @@
+import { splitVendorChunkPlugin } from "vite";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -11,6 +12,7 @@ export default defineConfig(async ({ mode }) => {
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),
+    splitVendorChunkPlugin(),
   ];
 
   // Only load Replit-only dev plugins when running on Replit + not production
