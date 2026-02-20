@@ -125,8 +125,9 @@ export const api = {
     details: async (id: string) =>
       authorizedFetch(`${API_BASE}/devices/${id}/details`, { method: "GET" }),
     locationList: async () => authorizedFetch(`${API_BASE}/devices/locations`, { method: "GET" }),
+    // Admin-only command endpoint (JWT required)
     command: async (deviceId: string, data: any) =>
-      authorizedFetch(`${API_BASE}/device/${deviceId}/command`, {
+      authorizedFetch(`${API_BASE}/admin/devices/${deviceId}/command`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
