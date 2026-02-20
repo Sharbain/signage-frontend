@@ -1,5 +1,4 @@
-import { splitVendorChunkPlugin } from "vite";
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunkPlugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -12,6 +11,7 @@ export default defineConfig(async ({ mode }) => {
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),
+    // ✅ Let Vite handle vendor chunking
     splitVendorChunkPlugin(),
   ];
 
@@ -33,7 +33,7 @@ export default defineConfig(async ({ mode }) => {
         gzipSize: true,
         brotliSize: true,
         template: "treemap",
-        emitFile: true, // guarantees file generation
+        emitFile: true,
       }),
     );
   }
@@ -57,37 +57,13 @@ export default defineConfig(async ({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
 
-      // ✅ REAL FIX: function-based chunking (reliable with custom root / monorepo layouts)
+      // ✅ Keep manualChunks ONLY for Leaflet (biggest win), let splitVendorChunkPlugin do the rest
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // 🗺️ Leaflet + markercluster (biggest offender)
             if (id.includes("leaflet") || id.includes("markercluster")) {
               return "leaflet";
             }
-
-            // ⚛️ React core + router
-            if (
-              id.includes("react-dom") ||
-              id.includes("react-router-dom") ||
-              id.includes("/react/") ||
-              id.includes("\\react\\")
-            ) {
-              return "react-vendor";
-            }
-
-            // 🎛️ Radix UI
-            if (id.includes("@radix-ui")) {
-              return "radix";
-            }
-
-            // 📅 date-fns
-            if (id.includes("date-fns")) {
-              return "date-fns";
-            }
-
-            // 🧩 (optional) tanstack/query libs (uncomment if you want it split too)
-            // if (id.includes("@tanstack")) return "tanstack";
           },
         },
       },
