@@ -24,13 +24,12 @@ export default defineConfig(async ({ mode }) => {
       : []),
   ];
 
-  // ✅ Only enable bundle analyzer when you explicitly ask for it locally:
-  // Run: ANALYZE=true npm run build
-  if (process.env.ANALYZE === "true") {
+  // ✅ ENABLE ANALYZER WHEN MODE = analyze
+  if (mode === "analyze") {
     const { visualizer } = await import("rollup-plugin-visualizer");
     plugins.push(
       visualizer({
-        filename: "bundle.html",
+        filename: path.resolve(import.meta.dirname, "bundle.html"),
         open: true,
         gzipSize: true,
         brotliSize: true,
@@ -48,9 +47,7 @@ export default defineConfig(async ({ mode }) => {
       },
     },
     css: {
-      postcss: {
-        plugins: [],
-      },
+      postcss: { plugins: [] },
     },
     root: path.resolve(import.meta.dirname, "client"),
     build: {
@@ -60,10 +57,7 @@ export default defineConfig(async ({ mode }) => {
     server: {
       host: "0.0.0.0",
       allowedHosts: true,
-      fs: {
-        strict: true,
-        deny: ["**/.*"],
-      },
+      fs: { strict: true, deny: ["**/.*"] },
     },
   };
 });
