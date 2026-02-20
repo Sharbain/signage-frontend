@@ -1,4 +1,4 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -11,8 +11,6 @@ export default defineConfig(async ({ mode }) => {
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),
-    // ✅ Let Vite handle vendor chunking
-    splitVendorChunkPlugin(),
   ];
 
   // Only load Replit-only dev plugins when running on Replit + not production
@@ -48,21 +46,45 @@ export default defineConfig(async ({ mode }) => {
       },
     },
     css: {
-      postcss: {
-        plugins: [],
-      },
+      postcss: { plugins: [] },
     },
     root: path.resolve(import.meta.dirname, "client"),
     build: {
       outDir: "dist",
       emptyOutDir: true,
 
-      // ✅ Keep manualChunks ONLY for Leaflet (biggest win), let splitVendorChunkPlugin do the rest
+      // ✅ Vercel-safe chunk splitting (works across Vite versions)
       rollupOptions: {
         output: {
           manualChunks(id) {
+            // 1) Leaflet (biggest offender) — isolate hard
             if (id.includes("leaflet") || id.includes("markercluster")) {
               return "leaflet";
+            }
+
+            // 2) React core
+            if (
+              id.includes("node_modules/react/") ||
+              id.includes("node_modules/react-dom/") ||
+              id.includes("node_modules/react-router/") ||
+              id.includes("node_modules/react-router-dom/")
+            ) {
+              return "react-vendor";
+            }
+
+            // 3) Radix UI
+            if (id.includes("node_modules/@radix-ui/")) {
+              return "radix";
+            }
+
+            // 4) TanStack Query (if present)
+            if (id.includes("node_modules/@tanstack/")) {
+              return "tanstack";
+            }
+
+            // 5) Everything else in node_modules -> vendor bucket
+            if (id.includes("node_modules/")) {
+              return "vendor";
             }
           },
         },
