@@ -26,11 +26,12 @@ export default defineConfig(async ({ mode }) => {
     const { visualizer } = await import("rollup-plugin-visualizer");
     plugins.push(
       visualizer({
-        filename: path.resolve(import.meta.dirname, "bundle.html"),
+        filename: "bundle.html", // will be placed in client/dist/
         open: true,
         gzipSize: true,
         brotliSize: true,
         template: "treemap",
+        emitFile: true, // ⭐ CRITICAL FIX — guarantees file generation
       }),
     );
   }
