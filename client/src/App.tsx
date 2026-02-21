@@ -15,7 +15,7 @@ import DevicesLayout from "./layouts/DevicesLayout";
 // ✅ Lazy loaded pages (big bundle win)
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const DevicesWorkspace = lazy(() => import("./pages/DevicesWorkspace"));
+const Devices = lazy(() => import("./pages/Devices"));
 const DeviceControlPage = lazy(() => import("./pages/DeviceControlPage"));
 const AddDevice = lazy(() => import("./pages/AddDevice"));
 const ContentScheduler = lazy(() => import("./pages/ContentScheduler"));
@@ -94,7 +94,7 @@ function App() {
             element={
               <RequireAuth>
                 <Shell>
-                  <DevicesWorkspace />
+                  <Devices />
                 </Shell>
               </RequireAuth>
             }
