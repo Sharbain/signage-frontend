@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE, authorizedFetch } from "../lib/api";
 
 type CreatedDevice = {
   id: string;
@@ -27,9 +28,9 @@ export default function AddDevice() {
 
     try {
       setLoading(true);
-      const res = await fetch("/api/devices", {
+
+      const res = await authorizedFetch(`${API_BASE}/devices`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           location_branch: location.trim() || undefined,
@@ -45,7 +46,7 @@ export default function AddDevice() {
       setCreated(data.device);
     } catch (e: any) {
       console.error(e);
-      setError(e.message || "Failed to create device");
+      setError(e?.message || "Failed to create device");
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,9 @@ export default function AddDevice() {
         ← Back to Devices
       </button>
 
-      <h1 className="text-xl font-semibold mb-4 text-[#3d3d3d]">Add New Device</h1>
+      <h1 className="text-xl font-semibold mb-4 text-[#3d3d3d]">
+        Add New Device
+      </h1>
 
       {!created && (
         <form
