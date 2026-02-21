@@ -20,13 +20,12 @@ export default defineConfig(async ({ mode }) => {
     plugins.push(cartographer(), devBanner());
   }
 
-  // ✅ Bundle analyzer (only when you ask for it)
-  // Run: npm run build -- --mode analyze
+  // Bundle analyzer (optional)
   if (mode === "analyze") {
     const { visualizer } = await import("rollup-plugin-visualizer");
     plugins.push(
       visualizer({
-        filename: "bundle.html", // emitted into client/dist/
+        filename: "bundle.html",
         open: true,
         gzipSize: true,
         brotliSize: true,
@@ -52,43 +51,6 @@ export default defineConfig(async ({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
-
-      // ✅ Vercel-safe chunk splitting (works across Vite versions)
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            // 1) Leaflet (biggest offender) — isolate hard
-            if (id.includes("leaflet") || id.includes("markercluster")) {
-              return "leaflet";
-            }
-
-            // 2) React core
-            if (
-              id.includes("node_modules/react/") ||
-              id.includes("node_modules/react-dom/") ||
-              id.includes("node_modules/react-router/") ||
-              id.includes("node_modules/react-router-dom/")
-            ) {
-              return "react-vendor";
-            }
-
-            // 3) Radix UI
-            if (id.includes("node_modules/@radix-ui/")) {
-              return "radix";
-            }
-
-            // 4) TanStack Query (if present)
-            if (id.includes("node_modules/@tanstack/")) {
-              return "tanstack";
-            }
-
-            // 5) Everything else in node_modules -> vendor bucket
-            if (id.includes("node_modules/")) {
-              return "vendor";
-            }
-          },
-        },
-      },
     },
     server: {
       host: "0.0.0.0",
