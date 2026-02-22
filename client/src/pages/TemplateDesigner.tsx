@@ -1,5 +1,6 @@
 import { useState, useRef, DragEvent, MouseEvent, useEffect, useCallback, Component, ErrorInfo, ReactNode } from "react";
 import { Plus, Save, Play, RotateCcw, Type, Image, Video, Rss, Share2, Move, Trash2, Palette, Droplets, ListMusic, UploadCloud, Loader2, Clock, AlertTriangle, Grid, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Underline, FolderOpen, DollarSign, Check } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -239,7 +240,7 @@ function TemplateDesignerContent() {
   useEffect(() => {
     async function fetchPlaylists() {
       try {
-        const res = await fetch("/api/content-playlists");
+        const res = await apiFetch("/content-playlists");
         if (res.ok) {
           const data = await res.json();
           setContentPlaylists(data);
@@ -255,7 +256,7 @@ function TemplateDesignerContent() {
   async function loadSavedTemplates() {
     setLoadingTemplates(true);
     try {
-      const res = await fetch("/api/templates");
+      const res = await apiFetch("/templates");
       if (res.ok) {
         const data = await res.json();
         setSavedTemplates(Array.isArray(data) ? data : []);
@@ -310,7 +311,7 @@ function TemplateDesignerContent() {
   async function fetchRssFeed(url: string) {
     if (!url || rssFeeds[url]) return;
     try {
-      const res = await fetch(`/api/rss-proxy?url=${encodeURIComponent(url)}`);
+      const res = await apiFetch(`/rss-proxy?url=${encodeURIComponent(url)}`);
       if (res.ok) {
         const data = await res.json();
         setRssFeeds(prev => ({ ...prev, [url]: data.items || [] }));
@@ -330,7 +331,7 @@ function TemplateDesignerContent() {
         (async () => {
           try {
             console.log("Fetching RSS:", el.content);
-            const res = await fetch(`/api/rss-proxy?url=${encodeURIComponent(el.content)}`);
+            const res = await apiFetch(`/rss-proxy?url=${encodeURIComponent(el.content)}`);
             if (res.ok) {
               const data = await res.json();
               console.log("RSS response for", el.content, ":", data.items?.length, "items");
@@ -362,7 +363,7 @@ function TemplateDesignerContent() {
           (async () => {
             try {
               console.log("Fetching Ticker text:", el.content);
-              const res = await fetch(`/api/ticker-proxy?url=${encodeURIComponent(el.content)}`);
+              const res = await apiFetch(`/ticker-proxy?url=${encodeURIComponent(el.content)}`);
               if (res.ok) {
                 const data = await res.json();
                 console.log("Ticker response for", el.content, ":", data.text?.length, "chars");
@@ -382,7 +383,7 @@ function TemplateDesignerContent() {
             try {
               console.log("Fetching Ticker screenshot:", el.content, "mode:", mode);
               setTickerScreenshots(prev => ({ ...prev, [el.content]: "loading" }));
-              const res = await fetch(`/api/webpage-screenshot?url=${encodeURIComponent(el.content)}&width=${el.width}&height=${el.height}`);
+              const res = await apiFetch(`/webpage-screenshot?url=${encodeURIComponent(el.content)}&width=${el.width}&height=${el.height}`);
               if (res.ok) {
                 const data = await res.json();
                 console.log("Screenshot captured for", el.content);
@@ -428,7 +429,7 @@ function TemplateDesignerContent() {
           
           try {
             console.log("Auto-refreshing live ticker:", el.content);
-            const res = await fetch(`/api/webpage-screenshot?url=${encodeURIComponent(el.content)}&width=${el.width}&height=${el.height}&t=${Date.now()}`);
+            const res = await apiFetch(`/webpage-screenshot?url=${encodeURIComponent(el.content)}&width=${el.width}&height=${el.height}&t=${Date.now()}`);
             if (res.ok && isActive) {
               const data = await res.json();
               setTickerScreenshots(prev => ({ ...prev, [el.content]: data.image || prev[el.content] }));
@@ -466,7 +467,7 @@ function TemplateDesignerContent() {
       if (el.playlistId && !playlistData[el.playlistId]) {
         (async () => {
           try {
-            const res = await fetch(`/api/content-playlists`);
+            const res = await apiFetch(`/content-playlists`);
             if (res.ok) {
               const data = await res.json();
               const playlist = data.find((p: any) => p.id === el.playlistId);
@@ -532,7 +533,7 @@ function TemplateDesignerContent() {
         watermark,
       };
 
-      const res = await fetch("/api/templates", {
+      const res = await apiFetch("/templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(templateData),
@@ -563,7 +564,7 @@ function TemplateDesignerContent() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/media/upload", {
+      const res = await apiFetch("/media/upload", {
         method: "POST",
         body: formData,
       });
@@ -586,7 +587,7 @@ function TemplateDesignerContent() {
   async function loadMediaLibrary() {
     setLoadingMedia(true);
     try {
-      const res = await fetch("/api/media");
+      const res = await apiFetch("/media");
       if (res.ok) {
         const data = await res.json();
         setMediaLibrary(Array.isArray(data) ? data : []);
@@ -611,7 +612,7 @@ function TemplateDesignerContent() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/media/upload", {
+      const res = await apiFetch("/media/upload", {
         method: "POST",
         body: formData,
       });
@@ -664,7 +665,7 @@ function TemplateDesignerContent() {
         watermark,
       };
 
-      const res = await fetch(`/api/templates/${currentTemplateId}`, {
+      const res = await apiFetch(`/templates/${currentTemplateId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(templateData),
@@ -697,7 +698,7 @@ function TemplateDesignerContent() {
       const { currentTemplateId: id, templateName: name, orientation: orient, elements: els, background: bg, watermark: wm, hasUnsavedChanges: unsaved } = templateDataRef.current;
       
       if (id && unsaved && name.trim()) {
-        // Use sendBeacon for reliable save on page leave
+        // Best-effort save on page leave
         const templateData = {
           name: name.trim(),
           orientation: orient,
@@ -706,10 +707,15 @@ function TemplateDesignerContent() {
           watermark: wm,
         };
         
-        navigator.sendBeacon(
-          `/api/templates/${id}`,
-          new Blob([JSON.stringify(templateData)], { type: 'application/json' })
-        );
+        // Best-effort save during navigation. keepalive helps the request finish.
+        // Note: do NOT await in beforeunload.
+        apiFetch(`/templates/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(templateData),
+          keepalive: true,
+        }).catch(() => {
+          // ignore
+        });
       }
     };
 
