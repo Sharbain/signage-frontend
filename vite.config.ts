@@ -1,46 +1,68 @@
-{
-  "include": [
-    "client/src/**/*",
-    "shared/**/*",
-    "vite.config.ts",
-    "vite-plugin-meta-images.ts",
-    "client/**/*.d.ts",
-    "env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build",
-    "coverage",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx"
-  ],
-  "compilerOptions": {
-    "incremental": true,
-    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": true,
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
+export default defineConfig(async ({ mode }) => {
+  const plugins = [
+    react(),
+    runtimeErrorOverlay(),
+    tailwindcss(),
+    metaImagesPlugin(),
+  ];
 
-    "moduleResolution": "Bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-
-    "baseUrl": ".",
-    "types": ["node", "vite/client"],
-
-    "paths": {
-      "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
-    }
+  // Only load Replit-only dev plugins when running on Replit + not production
+  if (mode !== "production" && process.env.REPL_ID !== undefined) {
+    const { cartographer } = await import("@replit/vite-plugin-cartographer");
+    const { devBanner } = await import("@replit/vite-plugin-dev-banner");
+    plugins.push(cartographer(), devBanner());
   }
-}
+
+  // Bundle analyzer (optional)
+  if (mode === "analyze") {
+    const { visualizer } = await import("rollup-plugin-visualizer");
+    plugins.push(
+      visualizer({
+        filename: "bundle.html",
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+        template: "treemap",
+        emitFile: true,
+      })
+    );
+  }
+
+  return {
+    plugins,
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "client", "src"),
+        "@shared": path.resolve(__dirname, "shared"),
+        "@assets": path.resolve(__dirname, "attached_assets"),
+      },
+    },
+    css: {
+      postcss: { plugins: [] },
+    },
+    root: path.resolve(__dirname, "client"),
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
+    },
+    server: {
+      host: "0.0.0.0",
+      allowedHosts: true,
+      fs: {
+        strict: true,
+        deny: ["**/.*"],
+      },
+    },
+  };
+});
