@@ -18,11 +18,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UploadCloud, Plus, Trash2, Send, Image as ImageIcon, Film, Loader2, Search, ListMusic, Monitor, ChevronRight, Check, Settings, Volume2, Play, X, Pause, SkipBack, SkipForward, Clock, Calendar, RotateCcw, Archive, FileText } from "lucide-react";
+import {
+  UploadCloud,
+  Plus,
+  Trash2,
+  Send,
+  Image as ImageIcon,
+  Film,
+  Loader2,
+  Search,
+  ListMusic,
+  Monitor,
+  Check,
+  Settings,
+  Volume2,
+  Play,
+  X,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Clock,
+  Calendar,
+  RotateCcw,
+  Archive,
+  FileText,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { API_BASE, authorizedFetch } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 
 interface MediaItem {
   id: number;
@@ -108,7 +132,7 @@ export default function ContentScheduler() {
 
   async function loadMedia() {
     try {
-      const res = await fetch("/api/media");
+      const res = await apiFetch("/media", { method: "GET" });
       if (res.ok) {
         const data = await res.json();
         setMedia(Array.isArray(data) ? data : []);
@@ -123,7 +147,7 @@ export default function ContentScheduler() {
   async function loadExpiredMedia() {
     setLoadingExpired(true);
     try {
-      const res = await fetch("/api/media/expired");
+      const res = await apiFetch("/media/expired", { method: "GET" });
       if (res.ok) {
         const data = await res.json();
         setExpiredMedia(Array.isArray(data) ? data : []);
@@ -137,23 +161,22 @@ export default function ContentScheduler() {
 
   async function handleSetExpiry() {
     if (!expiryMediaItem) return;
-    
+
     try {
-      const res = await fetch(`/api/media/${expiryMediaItem.id}/expiry`, {
+      const res = await apiFetch(`/media/${expiryMediaItem.id}/expiry`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expiresAt: expiryDate || null }),
       });
-      
+
       if (res.ok) {
         loadMedia();
-        // Always refresh expired list in case item moved between active/expired
         loadExpiredMedia();
         setShowExpiryDialog(false);
         setExpiryMediaItem(null);
         setExpiryDate("");
       } else {
-        alert("Failed to set expiry date");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to set expiry date");
       }
     } catch (err) {
       console.error("Set expiry error:", err);
@@ -168,15 +191,14 @@ export default function ContentScheduler() {
 
   async function handleRestoreMedia(id: number) {
     try {
-      const res = await fetch(`/api/media/${id}/restore`, {
-        method: "POST",
-      });
-      
+      const res = await apiFetch(`/media/${id}/restore`, { method: "POST" });
+
       if (res.ok) {
         loadExpiredMedia();
         loadMedia();
       } else {
-        alert("Failed to restore media");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to restore media");
       }
     } catch (err) {
       console.error("Restore media error:", err);
@@ -192,7 +214,7 @@ export default function ContentScheduler() {
 
   async function loadDevices() {
     try {
-      const res = await fetch("/api/devices/list-full");
+      const res = await apiFetch("/devices/list-full", { method: "GET" });
       if (res.ok) {
         const data = await res.json();
         setDevices(data.devices || []);
@@ -205,7 +227,7 @@ export default function ContentScheduler() {
   async function loadPlaylists() {
     setLoadingPlaylists(true);
     try {
-      const res = await fetch("/api/content-playlists");
+      const res = await apiFetch("/content-playlists", { method: "GET" });
       if (res.ok) {
         const data = await res.json();
         setPlaylists(Array.isArray(data) ? data : []);
@@ -221,12 +243,14 @@ export default function ContentScheduler() {
     loadMedia();
     loadDevices();
     loadPlaylists();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (activeTab === "expired") {
       loadExpiredMedia();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Auto-play slideshow effect
@@ -235,17 +259,15 @@ export default function ContentScheduler() {
 
     const currentItem = previewPlaylist.items[previewIndex];
     const duration = (currentItem?.duration || 10) * 1000;
-    
+
     setTimeRemaining(currentItem?.duration || 10);
-    
-    // Countdown timer
+
     const countdownInterval = setInterval(() => {
-      setTimeRemaining(prev => Math.max(0, prev - 1));
+      setTimeRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
-    // Advance to next item
     const timeout = setTimeout(() => {
-      setPreviewIndex(prev => (prev + 1) % previewPlaylist.items.length);
+      setPreviewIndex((prev) => (prev + 1) % previewPlaylist.items.length);
     }, duration);
 
     return () => {
@@ -263,17 +285,18 @@ export default function ContentScheduler() {
       const formData = new FormData();
       formData.append("file", file);
 
+      // Safe upload: do NOT set Content-Type; let browser set multipart boundary.
       const token = localStorage.getItem("accessToken") || "";
-      const res = await fetch("/api/media/upload", {
+      const res = await fetch(`${API_BASE}/media/upload`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
 
       if (res.ok) {
-        loadMedia();
+        await loadMedia();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         alert(err.error || "Upload failed");
       }
     } catch (err) {
@@ -281,9 +304,7 @@ export default function ContentScheduler() {
       alert("Failed to upload file");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -291,11 +312,14 @@ export default function ContentScheduler() {
     if (!confirm("Delete this content?")) return;
 
     try {
-      const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/media/${id}`, { method: "DELETE" });
+
       if (res.ok) {
         loadMedia();
+        if (activeTab === "expired") loadExpiredMedia();
       } else {
-        alert("Failed to delete media");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to delete media");
       }
     } catch (err) {
       console.error("Delete error:", err);
@@ -308,7 +332,7 @@ export default function ContentScheduler() {
 
     setPushing(true);
     try {
-      const res = await authorizedFetch(`${API_BASE}/admin/devices/${selectedDevice}/command`, {
+      const res = await apiFetch(`/admin/devices/${selectedDevice}/command`, {
         method: "POST",
         body: JSON.stringify({
           type: "PLAY_CONTENT",
@@ -320,10 +344,10 @@ export default function ContentScheduler() {
       });
 
       if (res.ok) {
-        const device = devices.find(d => d.id === selectedDevice);
-        await fetch("/api/publish-jobs", {
+        const device = devices.find((d) => d.id === selectedDevice);
+
+        await apiFetch("/publish-jobs", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             deviceId: selectedDevice,
             deviceName: device?.name || selectedDevice,
@@ -333,12 +357,14 @@ export default function ContentScheduler() {
             totalBytes: selectedMedia.size || null,
           }),
         });
+
         setShowPushDialog(false);
         setSelectedMedia(null);
         setSelectedDevice("");
         window.location.href = "/monitor";
       } else {
-        alert("Failed to push content");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to push content");
       }
     } catch (err) {
       console.error("Push error:", err);
@@ -353,9 +379,8 @@ export default function ContentScheduler() {
 
     setCreatingPlaylist(true);
     try {
-      const res = await fetch("/api/content-playlists", {
+      const res = await apiFetch("/content-playlists", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newPlaylistName,
           description: newPlaylistDescription,
@@ -368,7 +393,8 @@ export default function ContentScheduler() {
         setNewPlaylistDescription("");
         loadPlaylists();
       } else {
-        alert("Failed to create playlist");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to create playlist");
       }
     } catch (err) {
       console.error("Create playlist error:", err);
@@ -382,11 +408,12 @@ export default function ContentScheduler() {
     if (!confirm("Delete this playlist? This will remove all items and assignments.")) return;
 
     try {
-      const res = await fetch(`/api/content-playlists/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/content-playlists/${id}`, { method: "DELETE" });
       if (res.ok) {
         loadPlaylists();
       } else {
-        alert("Failed to delete playlist");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to delete playlist");
       }
     } catch (err) {
       console.error("Delete playlist error:", err);
@@ -396,13 +423,15 @@ export default function ContentScheduler() {
 
   async function handleRemovePlaylistItem(playlistId: number, itemId: number) {
     try {
-      const res = await fetch(`/api/content-playlists/${playlistId}/items/${itemId}`, { 
-        method: "DELETE" 
+      const res = await apiFetch(`/content-playlists/${playlistId}/items/${itemId}`, {
+        method: "DELETE",
       });
+
       if (res.ok) {
         loadPlaylists();
       } else {
-        alert("Failed to remove item from playlist");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to remove item from playlist");
       }
     } catch (err) {
       console.error("Remove playlist item error:", err);
@@ -415,9 +444,8 @@ export default function ContentScheduler() {
 
     setAssigningPlaylist(true);
     try {
-      const res = await fetch(`/api/content-playlists/${selectedPlaylist.id}/assign`, {
+      const res = await apiFetch(`/content-playlists/${selectedPlaylist.id}/assign`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deviceId: selectedDevice }),
       });
 
@@ -427,7 +455,8 @@ export default function ContentScheduler() {
         setSelectedPlaylist(null);
         setSelectedDevice("");
       } else {
-        alert("Failed to assign playlist");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to assign playlist");
       }
     } catch (err) {
       console.error("Assign error:", err);
@@ -441,9 +470,8 @@ export default function ContentScheduler() {
     if (!selectedPlaylist || selectedMediaForPlaylist.length === 0) return;
 
     try {
-      const res = await fetch(`/api/content-playlists/${selectedPlaylist.id}/items`, {
+      const res = await apiFetch(`/content-playlists/${selectedPlaylist.id}/items`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaIds: selectedMediaForPlaylist }),
       });
 
@@ -452,19 +480,18 @@ export default function ContentScheduler() {
         setSelectedMediaForPlaylist([]);
         loadPlaylists();
       } else {
-        alert("Failed to add media to playlist");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to add media to playlist");
       }
     } catch (err) {
       console.error("Add media error:", err);
       alert("Failed to add media to playlist");
     }
   }
-  
+
   function toggleMediaSelection(mediaId: number) {
-    setSelectedMediaForPlaylist(prev => 
-      prev.includes(mediaId) 
-        ? prev.filter(id => id !== mediaId)
-        : [...prev, mediaId]
+    setSelectedMediaForPlaylist((prev) =>
+      prev.includes(mediaId) ? prev.filter((id) => id !== mediaId) : [...prev, mediaId]
     );
   }
 
@@ -477,12 +504,11 @@ export default function ContentScheduler() {
 
   async function handleSaveItemSettings() {
     if (!editingItem) return;
-    
+
     setSavingSettings(true);
     try {
-      const res = await fetch(`/api/playlist-items/${editingItem.itemId}`, {
+      const res = await apiFetch(`/playlist-items/${editingItem.itemId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ duration: itemDuration, volume: itemVolume }),
       });
 
@@ -491,7 +517,8 @@ export default function ContentScheduler() {
         setEditingItem(null);
         loadPlaylists();
       } else {
-        alert("Failed to save settings");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to save settings");
       }
     } catch (err) {
       console.error("Save settings error:", err);
@@ -571,11 +598,7 @@ export default function ContentScheduler() {
                   className="hidden"
                   data-testid="input-file-upload"
                 />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  data-testid="button-upload"
-                >
+                <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} data-testid="button-upload">
                   {uploading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -591,10 +614,7 @@ export default function ContentScheduler() {
               </>
             )}
             {activeTab === "playlists" && (
-              <Button
-                onClick={() => setShowCreatePlaylistDialog(true)}
-                data-testid="button-create-playlist"
-              >
+              <Button onClick={() => setShowCreatePlaylistDialog(true)} data-testid="button-create-playlist">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Playlist
               </Button>
@@ -607,7 +627,13 @@ export default function ContentScheduler() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder={activeTab === "media" ? "Search content..." : activeTab === "expired" ? "Search expired content..." : "Search playlists..."}
+              placeholder={
+                activeTab === "media"
+                  ? "Search content..."
+                  : activeTab === "expired"
+                  ? "Search expired content..."
+                  : "Search playlists..."
+              }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -640,11 +666,7 @@ export default function ContentScheduler() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredMedia.map((item) => (
-                <Card
-                  key={item.id}
-                  data-testid={`content-card-${item.id}`}
-                  className="overflow-hidden group"
-                >
+                <Card key={item.id} data-testid={`content-card-${item.id}`} className="overflow-hidden group">
                   <div className="aspect-video bg-muted relative">
                     {item.type === "video" ? (
                       <div className="w-full h-full flex items-center justify-center bg-slate-800">
@@ -750,9 +772,7 @@ export default function ContentScheduler() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-foreground">{playlist.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {playlist.item_count || 0} items
-                        </p>
+                        <p className="text-sm text-muted-foreground">{playlist.item_count || 0} items</p>
                       </div>
                     </div>
                     {playlist.items && playlist.items.length > 0 && (
@@ -772,9 +792,7 @@ export default function ContentScheduler() {
                     )}
                   </div>
 
-                  {playlist.description && (
-                    <p className="text-sm text-muted-foreground mb-3">{playlist.description}</p>
-                  )}
+                  {playlist.description && <p className="text-sm text-muted-foreground mb-3">{playlist.description}</p>}
 
                   {playlist.items && playlist.items.length > 0 && (
                     <div className="space-y-1 mb-3 max-h-[140px] overflow-y-auto">
@@ -967,16 +985,14 @@ export default function ContentScheduler() {
             </div>
           )}
         </TabsContent>
-
       </Tabs>
 
+      {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-slate-900 dark:text-white">{viewMediaItem?.name}</DialogTitle>
-            <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Preview content
-            </DialogDescription>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">Preview content</DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
@@ -1006,6 +1022,7 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Expiry Dialog */}
       <Dialog open={showExpiryDialog} onOpenChange={setShowExpiryDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl">
           <DialogHeader>
@@ -1030,9 +1047,7 @@ export default function ContentScheduler() {
                 className="mt-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600"
                 data-testid="input-expiry-date"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Leave empty for no expiry
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Leave empty for no expiry</p>
             </div>
           </div>
 
@@ -1048,6 +1063,7 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Push Dialog */}
       <Dialog open={showPushDialog} onOpenChange={setShowPushDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl">
           <DialogHeader>
@@ -1066,12 +1082,19 @@ export default function ContentScheduler() {
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Select Device:</p>
               <Select value={selectedDevice} onValueChange={setSelectedDevice}>
-                <SelectTrigger data-testid="select-device" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600">
+                <SelectTrigger
+                  data-testid="select-device"
+                  className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600"
+                >
                   <SelectValue placeholder="Choose a device..." />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600">
                   {devices.map((device) => (
-                    <SelectItem key={device.id} value={device.id} className="hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700">
+                    <SelectItem
+                      key={device.id}
+                      value={device.id}
+                      className="hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700"
+                    >
                       {device.name} {device.is_online ? "🟢" : "🔴"}
                     </SelectItem>
                   ))}
@@ -1084,11 +1107,7 @@ export default function ContentScheduler() {
             <Button variant="outline" onClick={() => setShowPushDialog(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handlePushContent}
-              disabled={!selectedDevice || pushing}
-              data-testid="button-confirm-push"
-            >
+            <Button onClick={handlePushContent} disabled={!selectedDevice || pushing} data-testid="button-confirm-push">
               {pushing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1105,6 +1124,7 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Create Playlist Dialog */}
       <Dialog open={showCreatePlaylistDialog} onOpenChange={setShowCreatePlaylistDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl">
           <DialogHeader>
@@ -1160,6 +1180,7 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Assign Playlist Dialog */}
       <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl">
           <DialogHeader>
@@ -1178,12 +1199,19 @@ export default function ContentScheduler() {
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Select Device:</p>
               <Select value={selectedDevice} onValueChange={setSelectedDevice}>
-                <SelectTrigger data-testid="select-device-assign" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600">
+                <SelectTrigger
+                  data-testid="select-device-assign"
+                  className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600"
+                >
                   <SelectValue placeholder="Choose a device..." />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600">
                   {devices.map((device) => (
-                    <SelectItem key={device.id} value={device.id} className="hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700">
+                    <SelectItem
+                      key={device.id}
+                      value={device.id}
+                      className="hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700"
+                    >
                       {device.name} {device.is_online ? "🟢" : "🔴"}
                     </SelectItem>
                   ))}
@@ -1196,11 +1224,7 @@ export default function ContentScheduler() {
             <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleAssignPlaylist}
-              disabled={!selectedDevice || assigningPlaylist}
-              data-testid="button-confirm-assign"
-            >
+            <Button onClick={handleAssignPlaylist} disabled={!selectedDevice || assigningPlaylist} data-testid="button-confirm-assign">
               {assigningPlaylist ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1217,17 +1241,16 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Add Media Dialog */}
       <Dialog open={showAddMediaDialog} onOpenChange={setShowAddMediaDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-slate-900 dark:text-white">Add Media to Playlist</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Select media to add to "{selectedPlaylist?.name}". 
+              Select media to add to "{selectedPlaylist?.name}".{" "}
               <span className="ml-1">({media.length} items available)</span>
               {selectedMediaForPlaylist.length > 0 && (
-                <span className="ml-2 text-cyan-500 font-medium">
-                  • {selectedMediaForPlaylist.length} selected
-                </span>
+                <span className="ml-2 text-cyan-500 font-medium">• {selectedMediaForPlaylist.length} selected</span>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1249,6 +1272,7 @@ export default function ContentScheduler() {
                     <Check className="w-3 h-3 text-white" />
                   </div>
                 )}
+
                 <div className="aspect-video bg-muted relative">
                   {item.type === "video" ? (
                     <div className="w-full h-full relative bg-slate-800">
@@ -1270,20 +1294,10 @@ export default function ContentScheduler() {
                       </div>
                     </div>
                   ) : (
-                    <img 
-                      src={item.url} 
-                      alt={item.name} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                        const icon = document.createElement('div');
-                        icon.innerHTML = '<svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
-                        e.currentTarget.parentElement?.appendChild(icon);
-                      }}
-                    />
+                    <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
                   )}
                 </div>
+
                 <div className="p-1.5 bg-slate-50 dark:bg-slate-800">
                   <p className="text-xs truncate text-slate-900 dark:text-white font-medium">{item.name}</p>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase">{item.type}</p>
@@ -1308,6 +1322,7 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Item Settings Dialog */}
       <Dialog open={showItemSettingsDialog} onOpenChange={setShowItemSettingsDialog}>
         <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xl max-w-md">
           <DialogHeader>
@@ -1322,9 +1337,7 @@ export default function ContentScheduler() {
 
           <div className="space-y-6 py-4">
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-slate-900 dark:text-white">
-                Duration (seconds)
-              </Label>
+              <Label className="text-sm font-medium text-slate-900 dark:text-white">Duration (seconds)</Label>
               <div className="flex items-center gap-4">
                 <Slider
                   value={[itemDuration]}
@@ -1335,14 +1348,10 @@ export default function ContentScheduler() {
                   className="flex-1"
                   data-testid="slider-duration"
                 />
-                <span className="w-12 text-center text-sm font-medium text-slate-900 dark:text-white">
-                  {itemDuration}s
-                </span>
+                <span className="w-12 text-center text-sm font-medium text-slate-900 dark:text-white">{itemDuration}s</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {editingItem?.type === "video" 
-                  ? "How long to play the video (or set to video length)" 
-                  : "How long to display this image"}
+                {editingItem?.type === "video" ? "How long to play the video (or set to video length)" : "How long to display this image"}
               </p>
             </div>
 
@@ -1362,13 +1371,9 @@ export default function ContentScheduler() {
                     className="flex-1"
                     data-testid="slider-volume"
                   />
-                  <span className="w-12 text-center text-sm font-medium text-slate-900 dark:text-white">
-                    {itemVolume}%
-                  </span>
+                  <span className="w-12 text-center text-sm font-medium text-slate-900 dark:text-white">{itemVolume}%</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Set to 0 to mute the video
-                </p>
+                <p className="text-xs text-muted-foreground">Set to 0 to mute the video</p>
               </div>
             )}
           </div>
@@ -1377,11 +1382,7 @@ export default function ContentScheduler() {
             <Button variant="outline" onClick={() => setShowItemSettingsDialog(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSaveItemSettings}
-              disabled={savingSettings}
-              data-testid="button-save-settings"
-            >
+            <Button onClick={handleSaveItemSettings} disabled={savingSettings} data-testid="button-save-settings">
               {savingSettings ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1398,6 +1399,7 @@ export default function ContentScheduler() {
         </DialogContent>
       </Dialog>
 
+      {/* Preview Dialog */}
       <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
         <DialogContent className="bg-slate-900 text-white border-slate-700 shadow-xl max-w-4xl max-h-[90vh] p-0 overflow-hidden">
           <div className="flex flex-col h-full">
@@ -1409,7 +1411,8 @@ export default function ContentScheduler() {
                 <div>
                   <h3 className="font-semibold text-white">{previewPlaylist?.name}</h3>
                   <p className="text-sm text-slate-400">
-                    {previewPlaylist?.items?.length || 0} items • Viewing {previewIndex + 1} of {previewPlaylist?.items?.length || 0}
+                    {previewPlaylist?.items?.length || 0} items • Viewing {previewIndex + 1} of{" "}
+                    {previewPlaylist?.items?.length || 0}
                   </p>
                 </div>
               </div>
@@ -1446,33 +1449,39 @@ export default function ContentScheduler() {
                     )
                   )}
                 </div>
-                
-                {/* Playback controls */}
+
                 <div className="p-4 border-t border-slate-700 bg-slate-900/80">
-                  {/* Progress bar */}
                   <div className="mb-3">
                     <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-cyan-500 transition-all duration-1000"
-                        style={{ 
-                          width: `${((previewPlaylist?.items?.[previewIndex]?.duration || 10) - timeRemaining) / (previewPlaylist?.items?.[previewIndex]?.duration || 10) * 100}%` 
+                        style={{
+                          width: `${
+                            ((previewPlaylist?.items?.[previewIndex]?.duration || 10) - timeRemaining) /
+                            (previewPlaylist?.items?.[previewIndex]?.duration || 10) *
+                            100
+                          }%`,
                         }}
                       />
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-8 w-8 p-0 text-slate-400 hover:text-white"
-                        onClick={() => setPreviewIndex(prev => prev === 0 ? (previewPlaylist?.items?.length || 1) - 1 : prev - 1)}
+                        onClick={() =>
+                          setPreviewIndex((prev) =>
+                            prev === 0 ? (previewPlaylist?.items?.length || 1) - 1 : prev - 1
+                          )
+                        }
                         data-testid="button-prev-item"
                       >
                         <SkipBack className="h-4 w-4" />
                       </Button>
-                      
+
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1482,22 +1491,22 @@ export default function ContentScheduler() {
                       >
                         {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
                       </Button>
-                      
+
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-8 w-8 p-0 text-slate-400 hover:text-white"
-                        onClick={() => setPreviewIndex(prev => (prev + 1) % (previewPlaylist?.items?.length || 1))}
+                        onClick={() =>
+                          setPreviewIndex((prev) => (prev + 1) % (previewPlaylist?.items?.length || 1))
+                        }
                         data-testid="button-next-item"
                       >
                         <SkipForward className="h-4 w-4" />
                       </Button>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 text-sm">
-                      <span className="text-slate-400">
-                        {isPlaying ? `Next in ${timeRemaining}s` : "Paused"}
-                      </span>
+                      <span className="text-slate-400">{isPlaying ? `Next in ${timeRemaining}s` : "Paused"}</span>
                       <span className="text-white font-medium">
                         {previewIndex + 1} / {previewPlaylist?.items?.length || 0}
                       </span>
@@ -1516,9 +1525,7 @@ export default function ContentScheduler() {
                       key={item.itemId || idx}
                       onClick={() => setPreviewIndex(idx)}
                       className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                        idx === previewIndex 
-                          ? "bg-cyan-500/20 border-l-2 border-cyan-500" 
-                          : "hover:bg-slate-800"
+                        idx === previewIndex ? "bg-cyan-500/20 border-l-2 border-cyan-500" : "hover:bg-slate-800"
                       }`}
                       data-testid={`preview-item-${item.itemId}`}
                     >
@@ -1540,9 +1547,7 @@ export default function ContentScheduler() {
                           {item.duration}s • {item.type.toUpperCase()}
                         </p>
                       </div>
-                      {idx === previewIndex && (
-                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                      )}
+                      {idx === previewIndex && <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />}
                     </div>
                   ))}
                 </div>
