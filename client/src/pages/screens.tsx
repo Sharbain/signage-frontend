@@ -25,13 +25,11 @@ type Screen = {
 };
 
 async function normalizeScreensResult(result: unknown): Promise<Screen[]> {
-  // If api.screens.getAll accidentally returns a fetch Response
   if (result instanceof Response) {
     const data = await result.json().catch(() => []);
     return Array.isArray(data) ? (data as Screen[]) : [];
   }
 
-  // If it already returns JSON
   return Array.isArray(result) ? (result as Screen[]) : [];
 }
 
@@ -44,7 +42,8 @@ export default function Screens() {
     refetch,
   } = useQuery<Screen[]>({
     queryKey: ["screens"],
-    queryFn: async () => normalizeScreensResult(await api.screens.getAll()),
+    queryFn: async () =>
+      normalizeScreensResult(await api.screens.getAll()),
   });
 
   if (isLoading) {
@@ -60,7 +59,8 @@ export default function Screens() {
       <div className="flex items-center justify-center h-full">
         <div className="space-y-3 text-center">
           <div className="text-sm text-destructive">
-            Failed to load screens{error ? `: ${(error as any)?.message ?? ""}` : ""}.
+            Failed to load screens
+            {error instanceof Error ? `: ${error.message}` : ""}.
           </div>
           <Button onClick={() => refetch()} variant="outline">
             Retry
@@ -108,7 +108,7 @@ export default function Screens() {
             key={screen.id}
             className="group overflow-hidden border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5"
           >
-            <div className="relative h-40 bg-black/50 border-b border-border group-hover:opacity-100 transition-opacity">
+            <div className="relative h-40 bg-black/50 border-b border-border">
               {screen.status !== "offline" && (
                 <img
                   src={generatedImage}
@@ -129,20 +129,20 @@ export default function Screens() {
                     screen.status === "online"
                       ? "default"
                       : screen.status === "offline"
-                        ? "destructive"
-                        : "secondary"
+                      ? "destructive"
+                      : "secondary"
                   }
                   className={
                     screen.status === "online"
                       ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 border-green-500/50"
-                      : ""
+                      : undefined
                   }
                 >
                   {screen.status ?? "unknown"}
                 </Badge>
               </div>
 
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
+              <div className="absolute bottom-3 left-3">
                 <Badge
                   variant="outline"
                   className="bg-black/50 backdrop-blur border-white/10 text-white/80"
