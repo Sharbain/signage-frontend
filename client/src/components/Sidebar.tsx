@@ -6,16 +6,24 @@ import {
   CalendarDays,
   Users,
   Activity,
+  Map,
+  Settings,
+  FileText,
+  Receipt,
 } from "lucide-react";
 
 export default function Sidebar() {
   const menu = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/", exact: true },
     { label: "Devices", icon: Monitor, path: "/devices" },
+    { label: "Device Map", icon: Map, path: "/device-map" },
     { label: "Content", icon: Image, path: "/content" },
     { label: "Schedule", icon: CalendarDays, path: "/schedule" },
     { label: "Monitor", icon: Activity, path: "/monitor" },
     { label: "Clients", icon: Users, path: "/clients" },
+    { label: "Reports", icon: FileText, path: "/reports" },
+    { label: "Accounting", icon: Receipt, path: "/accounting" },
+    { label: "Settings", icon: Settings, path: "/settings" },
     { label: "Admin Users", icon: Users, path: "/admin/users" },
   ];
 
