@@ -1,7 +1,7 @@
 // client/src/pages/DeviceControlPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiJson, api } from "@/lib/api";
+import { apiJson, api, apiFetch, API_BASE } from "@/lib/api";
 import { BrightnessControl } from "@/components/BrightnessControl";
 import { VolumeControl } from "@/components/VolumeControl";
 import {
@@ -59,6 +59,8 @@ export default function DeviceControlPage() {
   const [loading, setLoading] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [loadingScreenshot, setLoadingScreenshot] = useState(false);
 
   const isOnline = useMemo(() => {
     const s = (device?.status || "").toLowerCase();
@@ -82,6 +84,9 @@ export default function DeviceControlPage() {
         "Failed to load command history"
       );
       setHistory(Array.isArray(h) ? h : []);
+
+      // Also try to load last screenshot (if any)
+      await loadLastScreenshot();
     } catch (e) {
       console.error(e);
       setError(safeErr(e));
@@ -90,6 +95,43 @@ export default function DeviceControlPage() {
     } finally {
       setLoading(false);
       setLoadingHistory(false);
+    }
+  }
+
+  async function loadLastScreenshot() {
+    try {
+      setLoadingScreenshot(true);
+
+      // Step 1: ask backend for the stored file path
+      const res = await apiFetch(`/device/${deviceId}/last-screenshot`, { method: "GET" });
+      const text = await res.text().catch(() => "");
+      if (!res.ok) throw new Error(text || `Failed to load screenshot (${res.status})`);
+      const json = JSON.parse(text);
+      const filePath = json?.file as string | null;
+      if (!filePath) {
+        setScreenshotUrl(null);
+        return;
+      }
+
+      // Step 2: fetch the binary with Authorization header, then create a blob URL
+      const token = localStorage.getItem("accessToken");
+      const base = API_BASE.replace(/\/api$/i, "");
+      const imgRes = await fetch(`${base}${filePath}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!imgRes.ok) throw new Error(`Failed to fetch screenshot image (${imgRes.status})`);
+      const blob = await imgRes.blob();
+
+      // Clean up old blob URL
+      setScreenshotUrl((prev) => {
+        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
+    } catch (e) {
+      console.warn("No screenshot yet or failed to load.", e);
+      setScreenshotUrl(null);
+    } finally {
+      setLoadingScreenshot(false);
     }
   }
 
@@ -231,7 +273,48 @@ export default function DeviceControlPage() {
               <RotateCcw className="w-4 h-4" />
               Restart App
             </button>
+
+            <button
+              className="inline-flex items-center gap-2 px-3 py-2 rounded border bg-white hover:bg-[#f5f5f0]"
+              onClick={async () => {
+                await send("SCREENSHOT");
+                // give device time to upload; user can hit Refresh too
+                setTimeout(() => loadLastScreenshot(), 2500);
+              }}
+            >
+              <RefreshCw className="w-4 h-4" />
+              Request Screenshot
+            </button>
           </div>
+        </div>
+
+        <div className="bg-white border border-[#e0ddd5] rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-semibold text-[#3d3d3d]">Latest Screenshot</div>
+            <button
+              className="px-3 py-2 rounded border bg-white hover:bg-[#f5f5f0]"
+              onClick={loadLastScreenshot}
+              disabled={loadingScreenshot}
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loadingScreenshot && <div className="text-sm text-[#6b6b6b]">Loading…</div>}
+
+          {!loadingScreenshot && !screenshotUrl && (
+            <div className="text-sm text-[#6b6b6b]">
+              No screenshot yet. Click “Request Screenshot” and refresh.
+            </div>
+          )}
+
+          {!loadingScreenshot && screenshotUrl && (
+            <img
+              src={screenshotUrl}
+              alt="Device screenshot"
+              className="w-full rounded-xl border bg-[#f5f5f0]"
+            />
+          )}
         </div>
 
         <div className="bg-white border border-[#e0ddd5] rounded-2xl p-4 shadow-sm">

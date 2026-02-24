@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { loadLeaflet } from "../lib/loadLeaflet";
 import "../styles/device-popup.css";
+import { apiFetch } from "@/lib/api";
 
 interface Device {
   id: string;
@@ -17,7 +18,31 @@ export default function DeviceMap() {
   const clusterGroupRef = useRef<any>(null);
 
   async function loadDevices() {
-    // keep your existing device load logic
+    try {
+      const res = await apiFetch("/devices/list-full", { method: "GET" });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Failed to load devices (${res.status}) ${txt.slice(0, 120)}`);
+      }
+
+      const text = await res.text();
+      const data = text.trim().startsWith("{") ? JSON.parse(text) : { devices: [] };
+
+      const mapped: Device[] = Array.isArray(data?.devices)
+        ? data.devices.map((d: any) => ({
+            id: String(d.id ?? d.device_id ?? ""),
+            name: String(d.name ?? "Device"),
+            status: (d.is_online ? "online" : "offline") as any,
+            latitude: d.latitude ?? null,
+            longitude: d.longitude ?? null,
+          }))
+        : [];
+
+      setDevices(mapped);
+    } catch (e) {
+      console.error("DeviceMap loadDevices error:", e);
+      setDevices([]);
+    }
   }
 
   async function refreshMapMarkers() {
