@@ -2,6 +2,8 @@
 // Central API client with automatic Authorization header handling.
 // Updated: better error messages (includes HTTP status + backend {error|message})
 //          preserves raw text for debugging, detects HTML responses.
+// Enterprise update: only auto-logout on definite auth failure (401/403),
+//                    never on server errors (500/502/etc).
 
 type FetchOptions = RequestInit & {
   timeoutMs?: number;
@@ -80,7 +82,7 @@ function extractApiErrorMessage(text: string, fallbackMsg: string) {
  * - Adds Authorization: Bearer <token> automatically
  * - Adds Content-Type: application/json when body is present and not FormData
  * - Always sets Accept: application/json
- * - On 401: removes token and redirects to /login
+ * - On 401/403: removes token and redirects to /login (ONLY if token existed)
  */
 export async function authorizedFetch(url: string, options: FetchOptions = {}) {
   const token = localStorage.getItem("accessToken");
@@ -115,13 +117,28 @@ export async function authorizedFetch(url: string, options: FetchOptions = {}) {
     throw err;
   }
 
-  // Auto-logout on auth failure (and force user back to login)
-  if (res.status === 401) {
-    localStorage.removeItem("accessToken");
+  // ✅ Enterprise auth handling:
+  // - Only logout on definitive auth failure (401/403)
+  // - Only if we actually had a token (prevents weird redirects on public pages)
+  // - Never logout on 500/502/etc (server instability should not kill session)
+  if (res.status === 401 || res.status === 403) {
+    const hadToken = !!token;
 
-    // Avoid redirect loops if we're already on /login
-    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-      window.location.href = "/login";
+    // Helpful debug line (you can remove later)
+    try {
+      // eslint-disable-next-line no-console
+      console.warn(`[AUTH] ${res.status} from ${url} (hadToken=${hadToken})`);
+    } catch {
+      // ignore
+    }
+
+    if (hadToken) {
+      localStorage.removeItem("accessToken");
+
+      // Avoid redirect loops if we're already on /login
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
   }
 
