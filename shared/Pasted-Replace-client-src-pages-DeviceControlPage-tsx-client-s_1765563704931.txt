@@ -1,0 +1,382 @@
+Replace client/src/pages/DeviceControlPage.tsx
+// client/src/pages/DeviceControlPage.tsx
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+
+interface DeviceDetails {
+  id: string;
+  name: string;
+  status: string;
+  lastHeartbeat?: string | null;
+  currentContentName?: string | null;
+  lastScreenshot?: string | null;
+  brightness?: number | null;
+  volume?: number | null;
+}
+
+const primaryButton =
+  "inline-flex items-center justify-center gap-1 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-medium px-4 py-2.5 transition shadow-sm";
+const ghostButton =
+  "inline-flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-xs text-slate-700 font-medium px-4 py-2.5 transition";
+
+const DeviceControlPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const [device, setDevice] = useState<DeviceDetails | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    if (!id) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("accessToken") || "";
+      const res = await fetch(`/api/devices/${id}/details`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to load device (${res.status})`);
+      }
+      const data = await res.json();
+      setDevice(data);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || "Failed to load device");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendCommand(endpoint: string, body: any = null, label?: string) {
+    if (!id) return;
+    try {
+      setBusy(label || endpoint);
+      const token = localStorage.getItem("accessToken") || "";
+      const res = await fetch(`/api/device/${id}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Command failed (${res.status})`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "Failed to send command");
+    } finally {
+      setBusy(null);
+      // Refresh status after a small delay
+      setTimeout(load, 800);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  if (loading && !device) {
+    return <div className="text-sm text-slate-500">Loading device…</div>;
+  }
+
+  if (error && !device) {
+    return (
+      <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+        {error}
+      </div>
+    );
+  }
+
+  if (!device) {
+    return (
+      <div className="text-sm text-slate-500">
+        No device data available. Please select a device from the explorer.
+      </div>
+    );
+  }
+
+  const isOnline = device.status?.toLowerCase().includes("online");
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+            Device Control
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage playback and hardware settings for{" "}
+            <span className="font-medium text-slate-900">{device.name}</span>.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <span
+            className={[
+              "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium shadow-sm",
+              isOnline
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-rose-50 text-rose-600",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "w-2 h-2 rounded-full",
+                isOnline ? "bg-emerald-500" : "bg-rose-500",
+              ].join(" ")}
+            />
+            {device.status || (isOnline ? "Online" : "Offline")}
+          </span>
+          {device.lastHeartbeat && (
+            <span className="text-[11px] text-slate-500">
+              Last heartbeat:{" "}
+              {new Date(device.lastHeartbeat).toLocaleString()}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Top row: Status + Live Preview */}
+      <div className="grid gap-6 xl:grid-cols-[1.7fr,1.6fr]">
+        {/* Status card */}
+        <section className="bg-white/80 border border-slate-100 rounded-3xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">
+            Status Overview
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400">
+                  Device
+                </div>
+                <div className="mt-0.5 text-slate-900 font-medium">
+                  {device.name}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400">
+                  Status
+                </div>
+                <div className="mt-0.5 text-slate-800">
+                  {device.status || "Unknown"}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400">
+                  Content Playing
+                </div>
+                <div className="mt-0.5 text-slate-800">
+                  {device.currentContentName || "None"}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400">
+                  Brightness
+                </div>
+                <div className="mt-0.5 text-slate-800">
+                  {device.brightness != null ? `${device.brightness}%` : "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400">
+                  Volume
+                </div>
+                <div className="mt-0.5 text-slate-800">
+                  {device.volume != null ? `${device.volume}%` : "—"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Live preview */}
+        <section className="bg-white/80 border border-slate-100 rounded-3xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Live Screen Preview
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Last captured screenshot from the device.
+              </p>
+            </div>
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("screenshot", null, "Capture Screenshot")
+              }
+            >
+              {busy === "Capture Screenshot" ? "Capturing…" : "Capture"}
+            </button>
+          </div>
+
+          <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-950/95 flex items-center justify-center overflow-hidden">
+            {device.lastScreenshot ? (
+              <img
+                src={device.lastScreenshot}
+                alt="Device screenshot"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <span className="text-[11px] text-slate-400">
+                No screenshot available yet.
+              </span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Controls */}
+      <div className="grid gap-6 xl:grid-cols-3">
+        {/* Display controls */}
+        <section className="bg-white/80 border border-slate-100 rounded-3xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] space-y-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Display Controls
+          </h2>
+          <p className="text-[11px] text-slate-500">
+            Adjust brightness and screen state.
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("brightness", { value: 20 }, "Brightness 20")
+              }
+            >
+              20%
+            </button>
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("brightness", { value: 50 }, "Brightness 50")
+              }
+            >
+              50%
+            </button>
+            <button
+              className={primaryButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("brightness", { value: 100 }, "Brightness 100")
+              }
+            >
+              100%
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("screen", { state: "off" }, "Screen Off")
+              }
+            >
+              Turn Screen Off
+            </button>
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("screen", { state: "on" }, "Screen On")
+              }
+            >
+              Turn Screen On
+            </button>
+          </div>
+        </section>
+
+        {/* Audio controls */}
+        <section className="bg-white/80 border border-slate-100 rounded-3xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] space-y-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Audio Controls
+          </h2>
+          <p className="text-[11px] text-slate-500">
+            Set media playback volume on the device.
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("volume", { value: 30 }, "Volume 30")
+              }
+            >
+              30%
+            </button>
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("volume", { value: 70 }, "Volume 70")
+              }
+            >
+              70%
+            </button>
+            <button
+              className={primaryButton}
+              disabled={busy !== null}
+              onClick={() =>
+                sendCommand("volume", { value: 100 }, "Volume 100")
+              }
+            >
+              100%
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() => sendCommand("volume", { value: 0 }, "Mute")}
+            >
+              Mute
+            </button>
+          </div>
+        </section>
+
+        {/* System & monitoring */}
+        <section className="bg-white/80 border border-slate-100 rounded-3xl p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] space-y-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            System & Monitoring
+          </h2>
+          <p className="text-[11px] text-slate-500">
+            Perform remote maintenance and diagnostics.
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() => sendCommand("record", { duration: 10 }, "Record")}
+            >
+              Record 10-second clip
+            </button>
+            <button
+              className={ghostButton}
+              disabled={busy !== null}
+              onClick={() => sendCommand("reboot", null, "Reboot")}
+            >
+              Reboot Device
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default DeviceControlPage;

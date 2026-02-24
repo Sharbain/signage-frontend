@@ -1,0 +1,101 @@
+A) Add Social Config UI in the right panel
+
+In template.html, inside #actionPanel, near “Zone Actions” / “Zone Styling”, add:
+
+<hr />
+<h4>Social Feed Settings</h4>
+
+<label style="margin-top:10px; display:block;">
+    Platform:
+    <select id="socialPlatform" disabled>
+        <option value="">Select</option>
+        <option value="instagram">Instagram</option>
+        <option value="twitter">Twitter / X</option>
+        <option value="facebook">Facebook</option>
+        <option value="youtube">YouTube</option>
+        <option value="tiktok">TikTok</option>
+        <option value="linkedin">LinkedIn</option>
+    </select>
+</label>
+
+<label style="margin-top:10px; display:block;">
+    Handle / Page / Channel:
+    <input type="text" id="socialHandle" disabled placeholder="@youraccount or channel ID" />
+</label>
+
+<label style="margin-top:10px; display:block;">
+    Hashtag (optional):
+    <input type="text" id="socialHashtag" disabled placeholder="#yourhashtag" />
+</label>
+
+<label style="margin-top:10px; display:block;">
+    Refresh every:
+    <input type="number" id="socialRefresh" value="10" min="1" max="1440" disabled /> minutes
+</label>
+
+<button class="btn-secondary" id="btnSaveSocial" disabled onclick="saveSocialConfigForZone()">💾 Save Social Config</button>
+<button class="btn-secondary" id="btnTestSocial" disabled onclick="testSocialPreview()">🔍 Test Preview</button>
+
+B) Enable these only when a social zone is selected
+
+Update enableZoneActions() and disableZoneActions():
+
+function disableZoneActions() {
+    const ids = [
+        'btnAssignPlaylist',
+        'btnAssignRSS',
+        'btnAssignSocial',
+        'btnAssignTicker',
+        'btnDeleteZone',
+        'btnDuplicateZone',
+        'btnLockZone',
+        'btnUnlockZone',
+        'fillColorPicker',
+        'fillOpacity',
+        'borderColorPicker',
+        'borderWidth',
+        'socialPlatform',
+        'socialHandle',
+        'socialHashtag',
+        'socialRefresh',
+        'btnSaveSocial',
+        'btnTestSocial'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+    });
+}
+
+function enableZoneActions() {
+    const ids = [
+        'btnAssignPlaylist',
+        'btnAssignRSS',
+        'btnAssignSocial',
+        'btnAssignTicker',
+        'btnDeleteZone',
+        'btnDuplicateZone',
+        'btnLockZone',
+        'btnUnlockZone',
+        'fillColorPicker',
+        'fillOpacity',
+        'borderColorPicker',
+        'borderWidth'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+    });
+
+    // If selected zone is social, enable social config
+    if (selectedZoneObject && selectedZoneObject.zone && selectedZoneObject.zone.type === 'social') {
+        ['socialPlatform','socialHandle','socialHashtag','socialRefresh','btnSaveSocial','btnTestSocial']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = false;
+            });
+    }
+}
+
+
+And ensure updateZonePanel(obj) updates this correctly after setting selectedZoneObject.

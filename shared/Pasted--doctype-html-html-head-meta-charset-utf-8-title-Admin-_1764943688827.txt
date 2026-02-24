@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Admin — Digital Signage</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
+    input, select, button { padding: 8px; margin: 6px 0; width: 100%; max-width: 500px; }
+    .row { margin-bottom: 18px; }
+    .small { width: 200px; display:inline-block; }
+    .inline { display:inline-block; vertical-align: top; margin-right: 8px; }
+    .media-list { margin-top: 12px; }
+    .card { padding: 8px; border: 1px solid #ddd; margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <h2>Admin — Digital Signage</h2>
+
+  <div id="auth">
+    <h3>Login</h3>
+    <input id="email" placeholder="email"/>
+    <input id="password" type="password" placeholder="password"/>
+    <button onclick="login()">Login</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div id="adminPanel" style="display:none;">
+    <h3>Upload Media</h3>
+    <form id="uploadForm">
+      <input type="text" id="mediaName" placeholder="Media name (optional)"/>
+      <input type="file" id="mediaFile"/>
+      <input type="number" id="mediaDuration" placeholder="Duration ms (images only; optional)"/>
+      <button type="button" onclick="uploadMedia()">Upload</button>
+    </form>
+
+    <h3>Create Screen (Device)</h3>
+    <input id="deviceId" placeholder="Device ID (unique)"/>
+    <input id="deviceName" placeholder="Screen name (Lobby 1)"/>
+    <button onclick="createScreen()">Create Screen</button>
+
+    <h3>Assign Media to Screen (Playlist)</h3>
+    <div>
+      <select id="screenSelect"></select>
+      <select id="mediaSelect"></select>
+      <input id="position" placeholder="Position (0 = first)"/>
+      <input id="overrideDuration" placeholder="Duration override ms (optional)"/>
+      <button onclick="assignToScreen()">Assign</button>
+    </div>
+
+    <h3>Media Library</h3>
+    <div id="mediaList" class="media-list"></div>
+
+    <h3>Screens</h3>
+    <div id="screensList"></div>
+  </div>
+
+<script>
+const BASE = window.location.origin;
+let token = '';
+
+async function login(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const res = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email,password})
+  });
+  const j = await res.json();
+  if (res.ok && j.accessToken){
+    token = j.accessToken;
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadMedia();
+    loadScreens();
+    document.getElementById('loginMsg').innerText = '';
+  } else {
+    document.getElementById('loginMsg').innerText = j.error || 'Login failed';
+  }
+}
+
+async function uploadMedia(){
+  const fileEl = document.getElementById('mediaFile');
+  if (!fileEl.files.length) return alert('Choose a file');
+  const name = document.getElementById('mediaName').value;
+  const duration = document.getElementById('mediaDuration').value;
+
+  const fd = new FormData();
+  fd.append('file', fileEl.files[0]);
+  fd.append('name', name);
+  fd.append('duration', duration);
+
+  const res = await fetch(BASE + '/api/media/upload', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token },
+    body: fd
+  });
+  const j = await res.json();
+  if (res.ok) {
+    alert('Uploaded');
+    loadMedia();
+  } else {
+    alert('Upload failed: ' + (j.error || JSON.stringify(j)));
+  }
+}
+
+async function loadMedia(){
+  const res = await fetch(BASE + '/api/media');
+  const arr = await res.json();
+  const list = document.getElementById('mediaList');
+  list.innerHTML = '';
+  const mediaSelect = document.getElementById('mediaSelect');
+  mediaSelect.innerHTML = '';
+  arr.forEach(m=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<strong>${m.id} - ${m.name}</strong> [${m.type}] <br/> <a href="${(m.url.startsWith('/')) ? BASE + m.url : m.url}" target="_blank">view</a>`;
+    list.appendChild(card);
+
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.text = `${m.id} - ${m.name || m.url}`;
+    mediaSelect.appendChild(opt);
+  });
+}
+
+async function createScreen(){
+  const deviceId = document.getElementById('deviceId').value;
+  const name = document.getElementById('deviceName').value;
+  const res = await fetch(BASE + '/api/screens', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ deviceId, name })
+  });
+  const j = await res.json();
+  if (res.ok) {
+    alert('Screen created');
+    loadScreens();
+  } else {
+    alert('Error: ' + JSON.stringify(j));
+  }
+}
+
+async function loadScreens(){
+  const res = await fetch(BASE + '/api/screens');
+  const arr = await res.json();
+  const screensList = document.getElementById('screensList');
+  const screenSelect = document.getElementById('screenSelect');
+  screensList.innerHTML = '';
+  screenSelect.innerHTML = '';
+  arr.forEach(s=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<strong>${s.id} - ${s.name || s.device_id}</strong> <br/> ${s.location || ''} <br/> Last seen: ${s.last_seen || 'never'}`;
+    screensList.appendChild(card);
+
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.text = `${s.id} - ${s.name || s.device_id}`;
+    screenSelect.appendChild(opt);
+  });
+}
+
+async function assignToScreen(){
+  const screen_id = document.getElementById('screenSelect').value;
+  const media_id = document.getElementById('mediaSelect').value;
+  const position = parseInt(document.getElementById('position').value || '0',10);
+  const duration_override = document.getElementById('overrideDuration').value || null;
+
+  const res = await fetch(BASE + '/api/playlists', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ screen_id, media_id, position, duration_override })
+  });
+
+  const j = await res.json();
+  if (res.ok) {
+    alert('Assigned');
+  } else {
+    alert('Error: ' + JSON.stringify(j));
+  }
+}
+</script>
+</body>
+</html>

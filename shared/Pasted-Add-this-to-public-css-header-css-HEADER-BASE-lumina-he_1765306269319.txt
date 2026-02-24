@@ -1,0 +1,133 @@
+Add this to:
+
+/public/css/header.css
+/* HEADER BASE */
+.lumina-header {
+    height: 60px;
+    background: var(--header-bg);
+    color: var(--header-text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 999;
+}
+
+/* LIGHT/DARK MODE VARIABLES */
+:root {
+    --header-bg: #2f5d3a;
+    --header-text: #fff;
+    --panel-bg: #fff;
+    --panel-text: #222;
+}
+.dark-mode {
+    --header-bg: #1b1b1b;
+    --header-text: #ddd;
+    --panel-bg: #2c2c2c;
+    --panel-text: #eee;
+}
+
+.header-logo {
+    height: 34px;
+    margin-right: 10px;
+}
+
+/* BREADCRUMBS */
+.breadcrumbs {
+    margin-left: 18px;
+    font-size: 14px;
+    opacity: 0.9;
+}
+.crumb::after {
+    content: " / ";
+}
+.crumb:last-child::after {
+    content: "";
+}
+
+/* SEARCH BAR */
+.header-search {
+    position: relative;
+}
+#global-search-input {
+    width: 220px;
+    padding: 6px 28px 6px 10px;
+    border-radius: 6px;
+    border: none;
+}
+.search-icon {
+    position: absolute;
+    right: 8px;
+    top: 5px;
+}
+.search-results {
+    position: absolute;
+    top: 36px;
+    width: 100%;
+    background: var(--panel-bg);
+    color: var(--panel-text);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: none;
+}
+
+/* DROPDOWNS */
+.header-dropdown {
+    position: relative;
+}
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 40px;
+    right: 0;
+    background: var(--panel-bg);
+    color: var(--panel-text);
+    min-width: 160px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+.dropdown-menu div {
+    padding: 10px;
+    cursor: pointer;
+}
+.dropdown-menu div:hover {
+    background: rgba(0,0,0,0.08);
+}
+
+/* NOTIFICATIONS */
+.notif-dot {
+    width: 8px;
+    height: 8px;
+    background: red;
+    border-radius: 50%;
+    position: absolute;
+    top: 4px;
+    right: 4px;
+}
+.hidden { display: none; }
+
+/* USER PANEL */
+.side-panel {
+    width: 320px;
+    background: var(--panel-bg);
+    color: var(--panel-text);
+    position: fixed;
+    right: -340px;
+    top: 0;
+    height: 100%;
+    padding: 20px;
+    transition: right 0.3s ease;
+    box-shadow: -4px 0 12px rgba(0,0,0,0.2);
+}
+.side-panel.open {
+    right: 0;
+}
+
+/* RTL SUPPORT */
+.rtl {
+    direction: rtl;
+}

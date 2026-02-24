@@ -1,0 +1,126 @@
+📌 File: client/src/pages/DeviceDetails.tsx
+
+👉 Paste this FULL code:
+
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
+type Device = {
+  id: string;
+  name: string;
+  location_branch: string;
+  is_online: boolean;
+  last_seen: string;
+  group_photo_url: string;
+};
+
+type Status = {
+  status: string;
+  current_content_id?: string;
+  temperature?: number;
+  free_storage?: number;
+  battery_level?: number;
+  signal_strength?: number;
+  latitude?: number;
+  longitude?: number;
+  errors?: string[];
+  timestamp: string;
+};
+
+const DeviceDetails: React.FC = () => {
+  const { id } = useParams();
+  const [device, setDevice] = useState<Device | null>(null);
+  const [latest, setLatest] = useState<Status | null>(null);
+  const [history, setHistory] = useState<Status[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/devices/${id}/details`);
+        const data = await res.json();
+
+        setDevice(data.device);
+        setLatest(data.latestStatus);
+        setHistory(data.history || []);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [id]);
+
+  if (loading || !device) {
+    return <div className="p-6">Loading…</div>;
+  }
+
+  return (
+    <div className="p-6">
+      <button onClick={() => navigate("/devices")} className="text-green-700 underline mb-4">
+        ← Back to Devices
+      </button>
+
+      <h1 className="text-xl font-semibold mb-2">{device.name}</h1>
+      <p className="text-gray-600 mb-4">Device ID: {device.id}</p>
+
+      {/* Status Card */}
+      <div className="bg-white rounded-xl shadow p-4 mb-6">
+        <h2 className="font-semibold mb-3">Current Status</h2>
+
+        {latest ? (
+          <div className="space-y-1">
+            <div>Status: {latest.status}</div>
+            <div>Content: {latest.current_content_id || "—"}</div>
+            <div>Temperature: {latest.temperature ?? "—"}°C</div>
+            <div>Battery: {latest.battery_level ?? "—"}%</div>
+            <div>Signal: {latest.signal_strength ?? "—"} dBm</div>
+            <div>
+              Free Storage:{" "}
+              {latest.free_storage
+                ? (latest.free_storage / 1024 / 1024).toFixed(1) + " MB"
+                : "—"}
+            </div>
+
+            {latest.latitude && latest.longitude && (
+              <div>
+                Location: {latest.latitude}, {latest.longitude}
+              </div>
+            )}
+
+            {latest.errors && latest.errors.length > 0 && (
+              <div className="text-red-600">
+                Errors: {latest.errors.join(", ")}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>No recent status available.</div>
+        )}
+      </div>
+
+      {/* History */}
+      <div className="bg-white rounded-xl shadow p-4">
+        <h2 className="font-semibold mb-3">Status History</h2>
+
+        {history.length === 0 && <div>No history yet.</div>}
+
+        <div className="space-y-3">
+          {history.map((h, i) => (
+            <div key={i} className="border-b pb-2 text-sm">
+              <div>• {h.status}</div>
+              <div>Content: {h.current_content_id || "—"}</div>
+              <div>Temp: {h.temperature ?? "—"}°C</div>
+              <div>Signal: {h.signal_strength ?? "—"} dBm</div>
+              <div>Time: {new Date(h.timestamp).toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DeviceDetails;

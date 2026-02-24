@@ -1,0 +1,92 @@
+import { useState } from "react";
+
+export default function DeviceManager() {
+  const [search, setSearch] = useState("");
+
+  const devices = [
+    { name: "Display 1", status: "online", location: "Amman", signal: 92, lastSeen: "1 min ago" },
+    { name: "Display 2", status: "offline", location: "Zarqa", signal: 0, lastSeen: "10 min ago" },
+    { name: "Display 3", status: "online", location: "Irbid", signal: 87, lastSeen: "2 min ago" },
+    { name: "Display 4", status: "online", location: "Amman", signal: 79, lastSeen: "3 min ago" },
+  ];
+
+  const filtered = devices.filter(d =>
+    d.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="p-6">
+
+      {/* PAGE TITLE */}
+      <h1 className="text-4xl font-bold gradient-text mb-6">Device Manager</h1>
+
+      {/* SEARCH & FILTERS */}
+      <div className="flex gap-4 mb-6 flex-wrap">
+
+        <input
+          type="text"
+          placeholder="Search device…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="glass p-3 rounded-lg w-64 text-white border border-white/30 bg-white/20"
+        />
+
+        <button className="button-gradient px-6">Online</button>
+        <button className="glass px-6 py-2">Offline</button>
+        <button className="glass px-6 py-2">All</button>
+      </div>
+
+      {/* DEVICE GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filtered.map((d, i) => (
+          <div key={i} className="glass p-6">
+
+            <h2 className="text-xl font-semibold mb-1">{d.name}</h2>
+            <p className="text-sm opacity-70">{d.location}</p>
+
+            {/* STATUS */}
+            <div className="mt-3">
+              {d.status === "online" ? (
+                <span className="text-green-300">● Online</span>
+              ) : (
+                <span className="text-red-400">● Offline</span>
+              )}
+            </div>
+
+            {/* SIGNAL */}
+            <div className="mt-2 text-sm opacity-80">
+              Signal Strength: {d.signal}%
+            </div>
+
+            {/* LAST SEEN */}
+            <div className="mt-2 text-sm opacity-60">
+              Last seen: {d.lastSeen}
+            </div>
+
+            {/* ACTION BUTTONS */}
+            <div className="grid grid-cols-2 gap-3 mt-5">
+
+              <button className="button-gradient text-sm py-2">
+                Push Content
+              </button>
+
+              <button className="glass py-2 text-sm">
+                Refresh
+              </button>
+
+              <button className="glass py-2 text-sm">
+                Reboot
+              </button>
+
+              <button className="glass py-2 text-sm">
+                Remote View
+              </button>
+
+            </div>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+}

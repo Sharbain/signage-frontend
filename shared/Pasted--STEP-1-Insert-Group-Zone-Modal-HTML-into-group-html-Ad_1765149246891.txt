@@ -1,0 +1,90 @@
+⭐ STEP 1 — Insert Group Zone Modal HTML into group.html
+
+Add this before the closing </body> tag in group.html:
+
+<!-- GROUP ZONE CONTROL MODAL -->
+<div id="groupZoneModal" style="
+    display:none;
+    position:fixed; 
+    top:0; left:0; 
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.55);
+    justify-content:center; 
+    align-items:center;
+    z-index:9999;
+">
+    <div style="
+        width:750px; 
+        background:#fff; 
+        border-radius:12px; 
+        padding:20px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25);
+        max-height:90vh; 
+        overflow-y:auto;
+    ">
+        <h2>Group Zone Control</h2>
+        <div id="groupZoneDetails"></div>
+
+        <hr/>
+
+        <h3>Preview</h3>
+        <div id="groupZonePreview" style="
+            width:100%; 
+            height:250px; 
+            background:#000; 
+            border-radius:10px; 
+            display:flex; 
+            justify-content:center; 
+            align-items:center;
+            color:#ccc;
+        ">No preview</div>
+
+        <hr/>
+
+        <h3>Assign Playlist</h3>
+        <input type="file" id="groupZonePlaylistUpload" multiple accept="image/*,video/*" />
+        <button onclick="uploadGroupZonePlaylist()">Upload Playlist</button>
+
+        <h3>Assign RSS Feed</h3>
+        <input type="text" id="groupZoneRSSUrl" placeholder="RSS feed URL" style="width:100%;" />
+        <button onclick="assignGroupRSS()">Assign RSS</button>
+
+        <h3>Assign Social Feed</h3>
+        <select id="groupZoneSocialPlatform">
+            <option value="">Select Platform</option>
+            <option value="instagram">Instagram</option>
+            <option value="twitter">Twitter / X</option>
+            <option value="facebook">Facebook Page</option>
+            <option value="youtube">YouTube Channel</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="tiktok">TikTok</option>
+        </select>
+        <input type="text" id="groupZoneSocialHandle" placeholder="@handle or Page ID" style="width:100%;" />
+        <button onclick="assignGroupSocial()">Assign Social Feed</button>
+
+        <h3>Assign Ticker Text</h3>
+        <textarea id="groupZoneTickerText" style="width:100%; height:60px;" 
+            placeholder="Breaking news goes here..."></textarea>
+        <button onclick="assignGroupTicker()">Assign Ticker</button>
+
+        <hr/>
+
+        <button onclick="publishGroupZoneChanges()" style="
+            background:#2196f3; 
+            color:#fff; 
+            padding:10px 20px; 
+            border:none; 
+            border-radius:6px;
+            font-size:16px;
+        ">📡 Publish to All Devices in Group</button>
+
+        <button onclick="closeGroupZoneModal()" style="
+            margin-left:10px;
+            background:#aaa; 
+            color:#fff; 
+            padding:10px 20px; 
+            border:none; 
+            border-radius:6px;
+        ">Close</button>
+    </div>
+</div>

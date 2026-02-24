@@ -1,0 +1,223 @@
+⭐ STEP 1 — NEW DEVICE CONTROL PAGE LAYOUT (copy & paste)
+
+Create a new file:
+
+/public/device.html
+
+
+Paste:
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Device Control</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f5f6f7;
+}
+
+/* Page layout */
+#container {
+    display: grid;
+    grid-template-columns: 320px 1fr 380px;
+    height: 100vh;
+}
+
+/* LEFT PANEL (Device Info) */
+#leftPanel {
+    background: #fff;
+    border-right: 1px solid #ddd;
+    padding: 20px;
+    overflow-y: auto;
+}
+#leftPanel h2 {
+    margin-top: 0;
+}
+
+/* MIDDLE PANEL (Live View + Controls) */
+#middlePanel {
+    padding: 20px;
+    overflow-y: auto;
+}
+.livePreviewBox {
+    width: 100%;
+    height: 340px;
+    background: #000;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    font-size: 14px;
+}
+.controlButtons button {
+    margin: 5px;
+}
+
+/* RIGHT PANEL (Template & Zones) */
+#rightPanel {
+    background: #fff;
+    border-left: 1px solid #ddd;
+    padding: 20px;
+    overflow-y: auto;
+}
+.zoneCard {
+    background: #f9f9f9;
+    border: 1px solid #ccc;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+</style>
+</head>
+
+<body>
+<div id="container">
+
+    <!-- LEFT PANEL -->
+    <div id="leftPanel">
+        <h2>📟 Device Control</h2>
+        <div><strong>ID:</strong> <span id="devId">-</span></div>
+        <div><strong>Status:</strong> <span id="devStatus">Loading...</span></div>
+        <div><strong>Last Heartbeat:</strong> <span id="devHeartbeat">-</span></div>
+        <div><strong>Brightness:</strong> <span id="devBrightness">-</span></div>
+        <div><strong>Volume:</strong> <span id="devVolume">-</span></div>
+        <div><strong>APK:</strong> <span id="devAPK">-</span></div>
+        <hr/>
+
+        <h3>Actions</h3>
+        <button onclick="sendReboot()">🔄 Reboot Device</button>
+        <button onclick="sendRestartApp()">♻ Restart App</button>
+        <button onclick="requestScreenshot()">📸 Screenshot</button>
+        <button onclick="requestRecording()">🎥 Live Recording</button>
+
+        <hr/>
+        <h3>Kiosk Mode</h3>
+        <button onclick="sendExitKiosk()">🔓 Exit Kiosk</button>
+        <button onclick="resetKioskPin()">🔑 Reset PIN</button>
+
+        <hr/>
+        <h3>Device Location</h3>
+        <div id="mapBox" style="width:100%; height:200px; background:#eee;">Map preview here</div>
+    </div>
+
+    <!-- MIDDLE PANEL -->
+    <div id="middlePanel">
+        <h2>Live Screen Preview</h2>
+        <div class="livePreviewBox" id="liveBox">No preview yet</div>
+
+        <h3>Screen Controls</h3>
+        <div class="controlButtons">
+            <button onclick="setBrightness(20)">🌙 20%</button>
+            <button onclick="setBrightness(50)">💡 50%</button>
+            <button onclick="setBrightness(100)">🔆 100%</button>
+            <button onclick="setVolume(0)">🔇 Mute</button>
+            <button onclick="setVolume(50)">🔉 50%</button>
+            <button onclick="setVolume(100)">🔊 100%</button>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div id="rightPanel">
+        <h2>Template Assigned</h2>
+        <div><strong>Name:</strong> <span id="tplName">-</span></div>
+        <div><strong>Description:</strong> <span id="tplDesc">-</span></div>
+
+        <h3>Zones</h3>
+        <div id="zoneList"></div>
+    </div>
+
+</div>
+
+<script>
+// Fetch device ID from URL
+const deviceId = new URLSearchParams(window.location.search).get("id");
+document.getElementById("devId").innerText = deviceId;
+
+// Load device data
+async function loadDevice() {
+    const res = await fetch(`/api/device/${deviceId}`);
+    const data = await res.json();
+
+    document.getElementById("devStatus").innerText = data.online ? "🟢 Online" : "🔴 Offline";
+    document.getElementById("devHeartbeat").innerText = data.lastHeartbeat;
+    document.getElementById("devBrightness").innerText = data.brightness;
+    document.getElementById("devVolume").innerText = data.volume;
+    document.getElementById("devAPK").innerText = data.appVersion;
+
+    // Load template & zones
+    loadTemplate(data.templateId);
+}
+
+// Load template info
+async function loadTemplate(tplId) {
+    if (!tplId) return;
+
+    const res = await fetch(`/api/templates/${tplId}`);
+    const tpl = await res.json();
+
+    document.getElementById("tplName").innerText = tpl.name;
+    document.getElementById("tplDesc").innerText = tpl.description;
+
+    const zoneList = document.getElementById("zoneList");
+    zoneList.innerHTML = "";
+
+    tpl.zones.forEach(z => {
+        const div = document.createElement("div");
+        div.className = "zoneCard";
+        div.innerHTML = `
+            <strong>${z.name}</strong><br/>
+            Type: ${z.type}<br/>
+            Size: ${z.width.toFixed(1)}% × ${z.height.toFixed(1)}%<br/>
+            Position: (${z.x.toFixed(1)}%, ${z.y.toFixed(1)}%)<br/><br/>
+            <button onclick="openZoneConfig('${z.id}')">⚙ Configure</button>
+        `;
+        zoneList.appendChild(div);
+    });
+}
+
+// Commands
+async function sendReboot() {
+    await fetch(`/api/device/${deviceId}/reboot`, { method: "POST" });
+    alert("Reboot command sent");
+}
+async function sendRestartApp() {
+    await fetch(`/api/device/${deviceId}/restart-app`, { method: "POST" });
+    alert("Restart command sent");
+}
+async function requestScreenshot() {
+    const res = await fetch(`/api/device/${deviceId}/screenshot`);
+    const data = await res.json();
+    document.getElementById("liveBox").innerHTML = `<img src="${data.url}" style="max-width:100%; max-height:100%;">`;
+}
+async function requestRecording() {
+    const res = await fetch(`/api/device/${deviceId}/record`);
+    const data = await res.json();
+    document.getElementById("liveBox").innerHTML = `<video src="${data.url}" autoplay muted loop style="max-width:100%; max-height:100%;"></video>`;
+}
+async function setBrightness(val) {
+    await fetch(`/api/device/${deviceId}/brightness`, {
+        method: "POST",
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ level: val })
+    });
+}
+async function setVolume(val) {
+    await fetch(`/api/device/${deviceId}/volume`, {
+        method: "POST",
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ level: val })
+    });
+}
+
+loadDevice();
+</script>
+
+</body>
+</html>

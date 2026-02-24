@@ -1,0 +1,124 @@
+Here's the complete client/src/pages/Devices.tsx:
+
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+type DeviceFull = {
+  id: string;
+  name: string;
+  location_branch?: string;
+  is_online: boolean;
+  last_seen: string | null;
+  status: string;
+  current_content_id?: string | null;
+  temperature?: number | null;
+  free_storage?: number | null;
+  battery_level?: number | null;
+  signal_strength?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  errors: string[];
+  last_status_at: string | null;
+};
+export default function Devices() {
+  const [devices, setDevices] = useState<DeviceFull[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/devices/list-full");
+        const data = await res.json();
+        setDevices(data.devices || []);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+  const filtered = devices.filter((d) => {
+    const hay = `${d.name} ${d.id} ${d.location_branch}`.toLowerCase();
+    return hay.includes(search.toLowerCase());
+  });
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-semibold mb-4 text-[#3d3d3d]">Devices</h1>
+      <div className="flex items-center gap-3 mb-4">
+        <input
+          className="p-2 border border-[#e0ddd5] rounded w-80 bg-white text-[#3d3d3d] focus:outline-none focus:border-[#5b7a5b]"
+          placeholder="Search devices..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          data-testid="input-search-devices"
+        />
+        <button
+          className="bg-[#5b7a5b] text-white px-4 py-2 rounded shadow hover:bg-[#4a6349] transition"
+          onClick={() => navigate("/devices/add")}
+          data-testid="button-add-device"
+        >
+          + Add Device
+        </button>
+      </div>
+      {loading && <div className="text-[#6b6b6b]">Loading devices...</div>}
+      {!loading && filtered.length === 0 && (
+        <div className="text-[#6b6b6b]">No devices found. Add your first device.</div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {filtered.map((d) => (
+          <div
+            key={d.id}
+            className="bg-white p-4 rounded-xl shadow border border-[#e0ddd5] cursor-pointer hover:shadow-lg transition"
+            onClick={() => navigate(`/devices/${d.id}`)}
+            data-testid={`card-device-${d.id}`}
+          >
+            <div className="font-semibold text-[#3d3d3d]">{d.name}</div>
+            <div className="text-xs text-[#6b6b6b]">
+              Location: {d.location_branch || "Unknown"}
+            </div>
+            <div className="mt-2 text-sm">
+              <span
+                className={
+                  d.is_online ? "text-[#5b7a5b]" : "text-[#b5836d]"
+                }
+              >
+                ● {d.is_online ? "Online" : "Offline"}
+              </span>
+            </div>
+            <div className="text-xs text-[#6b6b6b] mt-1">
+              Status: {d.status}
+            </div>
+            <div className="text-xs text-[#6b6b6b]">
+              Content: {d.current_content_id || "—"}
+            </div>
+            <div className="text-xs text-[#6b6b6b]">
+              Temp: {d.temperature ?? "—"}°C
+            </div>
+            <div className="text-xs text-[#6b6b6b]">
+              Signal: {d.signal_strength ?? "—"} dBm
+            </div>
+            <div className="text-xs text-[#6b6b6b]">
+              Free Storage:{" "}
+              {d.free_storage
+                ? (d.free_storage / 1024 / 1024).toFixed(1) + " MB"
+                : "—"}
+            </div>
+            <div className="text-xs text-[#6b6b6b] mt-1">
+              Last seen:{" "}
+              {d.last_seen
+                ? new Date(d.last_seen).toLocaleString()
+                : "—"}
+            </div>
+            {d.errors.length > 0 && (
+              <div className="text-xs text-[#c9534a] mt-2">
+                Errors: {d.errors.join(", ")}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+Note: It uses react-router-dom but should use wouter. Want me to fix that?

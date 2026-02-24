@@ -1,0 +1,62 @@
+1️⃣ Update the HTML: add controls to the right “Zone Actions” panel
+
+In template.html, find your current Zone Actions panel (right column), which looks roughly like:
+
+<div id="actionPanel">
+    <h3>Zone Actions</h3>
+    <p><strong>Selected Zone:</strong> <span id="selectedZoneName">None</span></p>
+
+    <button class="btn-secondary" id="btnAssignPlaylist" disabled>...</button>
+    ...
+    <button class="btn-danger" id="btnDeleteZone" disabled>Delete Zone</button>
+</div>
+
+
+👉 Replace that whole <div id="actionPanel">...</div> with this:
+
+<div id="actionPanel">
+    <h3>Zone Actions</h3>
+    <p><strong>Selected Zone:</strong> <span id="selectedZoneName">None</span></p>
+
+    <!-- Content assignment buttons (same as before) -->
+    <button class="btn-secondary" id="btnAssignPlaylist" disabled>🎞 Assign Playlist</button>
+    <button class="btn-secondary" id="btnAssignRSS" disabled>📰 Assign RSS Feed</button>
+    <button class="btn-secondary" id="btnAssignSocial" disabled>📱 Assign Social Feed</button>
+    <button class="btn-secondary" id="btnAssignTicker" disabled>🗞 Assign Ticker</button>
+
+    <hr />
+
+    <!-- NEW: zone editing tools -->
+    <button class="btn-secondary" id="btnDuplicateZone" disabled onclick="duplicateZone()">📄 Duplicate Zone</button>
+    <button class="btn-secondary" id="btnLockZone" disabled onclick="lockZone()">🔒 Lock Zone</button>
+    <button class="btn-secondary" id="btnUnlockZone" disabled onclick="unlockZone()">🔓 Unlock Zone</button>
+
+    <label style="margin-top:12px; display:block;">
+        <input type="checkbox" id="snapToggle" checked />
+        Snap to grid
+    </label>
+
+    <label style="margin-top:12px; display:block;">
+        Corner radius:
+        <input type="range" id="cornerRadius" min="0" max="40" value="10"
+               oninput="onCornerRadiusChange(this.value)" />
+    </label>
+
+    <label style="margin-top:12px; display:block;">
+        Rotation:
+        <input type="range" id="rotation" min="-45" max="45" value="0"
+               oninput="onRotationChange(this.value)" />
+    </label>
+
+    <hr />
+
+    <button class="btn-secondary" onclick="exportTemplate()">⬇ Export Template</button>
+    <label style="margin-top:8px; display:block;">
+        Import Template:
+        <input type="file" id="importFile" accept="application/json"
+               onchange="importTemplate(event)" />
+    </label>
+
+    <br /><br />
+    <button class="btn-danger" id="btnDeleteZone" disabled onclick="deleteZone()">Delete Zone</button>
+</div>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Digital Signage Admin Dashboard</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+  h1 { margin-bottom: 20px; }
+  .section { margin-bottom: 40px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+  input, select, button { margin: 5px 0; padding: 5px; font-size: 14px; }
+  ul { list-style: none; padding: 0; }
+  li { padding: 5px 0; }
+  .online { color: green; font-weight: bold; }
+  .offline { color: gray; font-weight: normal; }
+  .notification { background: #e0f7fa; padding: 5px; margin-bottom: 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Digital Signage Admin Dashboard</h1>
+
+<div class="section">
+  <h2>Upload Content</h2>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" name="file" required />
+    <button type="submit">Upload</button>
+  </form>
+  <div id="uploadStatus"></div>
+</div>
+
+<div class="section">
+  <h2>Assign Content to Device</h2>
+  <select id="contentSelect"></select><br/>
+  <input type="text" id="deviceId" placeholder="Device ID" required /><br/>
+  <button id="assignBtn">Assign</button>
+  <div id="assignStatus"></div>
+</div>
+
+<div class="section">
+  <h2>Live Devices</h2>
+  <ul id="liveDevices"></ul>
+</div>
+
+<div class="section">
+  <h2>Live Notifications</h2>
+  <ul id="notifications"></ul>
+</div>
+
+<script>
+  // Fetch content list
+  async function loadContent() {
+    const res = await fetch("/api/content");
+    const data = await res.json();
+    const select = document.getElementById("contentSelect");
+    select.innerHTML = "";
+    data.forEach(file => {
+      const option = document.createElement("option");
+      option.value = file.name;
+      option.textContent = file.name;
+      select.appendChild(option);
+    });
+  }
+
+  // Upload content
+  document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById("fileInput");
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    document.getElementById("uploadStatus").textContent = data.message || data.error;
+    loadContent();
+  });
+
+  // Assign content
+  document.getElementById("assignBtn").addEventListener("click", async () => {
+    const deviceId = document.getElementById("deviceId").value;
+    const contentName = document.getElementById("contentSelect").value;
+    const res = await fetch("/api/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId, contentName })
+    });
+    const data = await res.json();
+    document.getElementById("assignStatus").textContent = data.message || data.error;
+  });
+
+  // Fetch live devices every 5s
+  async function loadLiveDevices() {
+    const res = await fetch("/api/devices/online");
+    const data = await res.json();
+    const ul = document.getElementById("liveDevices");
+    ul.innerHTML = "";
+    
+    // Optional: maintain previous list to detect offline devices
+    const onlineSet = new Set(data.onlineDevices);
+
+    data.onlineDevices.forEach(deviceId => {
+      const li = document.createElement("li");
+      li.textContent = deviceId;
+      li.className = "online";
+      ul.appendChild(li);
+    });
+  }
+
+  setInterval(loadLiveDevices, 5000);
+  loadLiveDevices();
+  loadContent();
+
+  // Connect to SSE for admin notifications
+  const eventSource = new EventSource("/api/admin/stream");
+  eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const ul = document.getElementById("notifications");
+
+    if(data.contentName && data.deviceId){
+      const li = document.createElement("li");
+      li.className = "notification";
+      li.textContent = `Device ${data.deviceId} received content: ${data.contentName}`;
+      ul.prepend(li);
+
+      // Flash live device indicator briefly
+      const deviceElements = document.querySelectorAll("#liveDevices li");
+      deviceElements.forEach(el => {
+        if(el.textContent === data.deviceId){
+          el.style.background = "#ffff99"; // highlight
+          setTimeout(() => el.style.background = "transparent", 2000);
+        }
+      });
+    }
+  };
+</script>
+
+</body>
+</html>
