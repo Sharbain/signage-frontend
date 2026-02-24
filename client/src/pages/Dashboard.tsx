@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { Monitor, Clock, Calendar, AlertTriangle, Play, Image, Film, FileText } from "lucide-react";
+import {
+  Monitor,
+  Clock,
+  Calendar,
+  AlertTriangle,
+  Play,
+  Image,
+  Film,
+  FileText,
+} from "lucide-react";
 
 type DashboardSummary = {
   activeDevices: number;
@@ -40,13 +49,38 @@ export default function Dashboard() {
   }, []);
 
   const formatDate = (date: Date) => {
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
     return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
   };
 
   const formatLastSeen = (lastSeen?: string) => {
@@ -57,7 +91,7 @@ export default function Dashboard() {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours} hours ago`;
@@ -70,22 +104,27 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
+        // Summary is fine as-is
         const data: DashboardSummary = await api.dashboard.summary();
         setSummary(data);
 
-        const devicesRes = await api.devices.list();
-        if (devicesRes.ok) {
-          const devicesData = await devicesRes.json();
-          setDevices(devicesData.devices || []);
-        } else {
-          setDevices([]);
-        }
+        // ✅ FIX: api.devices.list() returns JSON (not a Response)
+        // Use listFull() for a consistent { devices: [...] } shape.
+        const devicesData = await api.devices.listFull();
+        setDevices(Array.isArray(devicesData?.devices) ? devicesData.devices : []);
 
-        const contentRes = await api.dashboard.liveContent();
-        setLiveContent(contentRes.content || []);
+        // ✅ FIX: Live content currently 500s on backend in your environment.
+        // Do NOT let it crash dashboard. Treat as non-fatal.
+        try {
+          const contentRes = await api.dashboard.liveContent();
+          setLiveContent(Array.isArray(contentRes?.content) ? contentRes.content : []);
+        } catch (e) {
+          console.warn("live-content failed (non-fatal):", e);
+          setLiveContent([]);
+        }
       } catch (e: any) {
         console.error(e);
-        setError(e.message || "Failed to load dashboard");
+        setError(e?.message || "Failed to load dashboard");
       } finally {
         setLoading(false);
       }
@@ -94,15 +133,15 @@ export default function Dashboard() {
     load();
   }, []);
 
-  const offlineDevices = devices.filter(d => !d.is_online);
+  const offlineDevices = devices.filter((d) => !d.is_online);
 
   const getContentIcon = (type: string) => {
     switch (type?.toLowerCase()) {
-      case 'video':
+      case "video":
         return <Film className="w-5 h-5 text-purple-500" />;
-      case 'image':
+      case "image":
         return <Image className="w-5 h-5 text-blue-500" />;
-      case 'template':
+      case "template":
         return <FileText className="w-5 h-5 text-green-500" />;
       default:
         return <Play className="w-5 h-5 text-gray-500" />;
@@ -116,12 +155,16 @@ export default function Dashboard() {
         <div className="flex items-center gap-6 bg-white px-6 py-3 rounded-xl border border-[#e0ddd5] shadow-sm">
           <div className="flex items-center gap-2 text-[#5b7a5b]">
             <Calendar className="w-5 h-5" />
-            <span className="font-medium" data-testid="text-current-date">{formatDate(currentTime)}</span>
+            <span className="font-medium" data-testid="text-current-date">
+              {formatDate(currentTime)}
+            </span>
           </div>
           <div className="w-px h-6 bg-[#e0ddd5]" />
           <div className="flex items-center gap-2 text-[#3d3d3d]">
             <Clock className="w-5 h-5" />
-            <span className="font-mono text-lg font-semibold" data-testid="text-current-time">{formatTime(currentTime)}</span>
+            <span className="font-mono text-lg font-semibold" data-testid="text-current-time">
+              {formatTime(currentTime)}
+            </span>
           </div>
         </div>
       </div>
@@ -233,7 +276,8 @@ export default function Dashboard() {
                     <div>
                       <h3 className="font-semibold text-[#3d3d3d]">{content.name}</h3>
                       <p className="text-xs text-[#6b6b6b]">
-                        Playing on {content.deviceCount} device{content.deviceCount !== 1 ? 's' : ''}
+                        Playing on {content.deviceCount} device
+                        {content.deviceCount !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
