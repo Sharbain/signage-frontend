@@ -1,5 +1,7 @@
 // client/src/lib/api.ts
 // Central API client with automatic Authorization header handling.
+// Updated: better error messages (includes HTTP status + backend {error|message})
+//          preserves raw text for debugging, detects HTML responses.
 
 type FetchOptions = RequestInit & {
   timeoutMs?: number;
@@ -25,7 +27,7 @@ function getEnvApiRoot(): string {
 
 const ROOT = getEnvApiRoot();
 
-// If ROOT is empty, we fall back to relative '/api' (works only if you proxy/rewite in dev/prod).
+// If ROOT is empty, we fall back to relative '/api' (works only if you proxy/rewrite in dev/prod).
 export const API_BASE = ROOT ? `${ROOT}/api` : "/api";
 
 /**
@@ -49,6 +51,31 @@ async function fetchWithTimeout(url: string, options: FetchOptions = {}) {
 }
 
 /**
+ * Helpers
+ */
+function looksLikeHtml(text: string) {
+  const t = text.trim();
+  return t.startsWith("<!doctype") || t.startsWith("<html") || t.startsWith("<");
+}
+
+function extractApiErrorMessage(text: string, fallbackMsg: string) {
+  // Try to parse JSON error shape: { error } or { message }
+  try {
+    const parsed = text ? JSON.parse(text) : null;
+    const msg = parsed?.error || parsed?.message;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  } catch {
+    // ignore
+  }
+
+  // If not JSON, use text if it's short and readable
+  const trimmed = (text || "").trim();
+  if (trimmed && trimmed.length <= 300 && !looksLikeHtml(trimmed)) return trimmed;
+
+  return fallbackMsg;
+}
+
+/**
  * authorizedFetch
  * - Adds Authorization: Bearer <token> automatically
  * - Adds Content-Type: application/json when body is present and not FormData
@@ -66,8 +93,7 @@ export async function authorizedFetch(url: string, options: FetchOptions = {}) {
   const body = (options as any).body;
 
   // Only set JSON content-type automatically if body is not FormData
-  const isFormData =
-    typeof FormData !== "undefined" && body instanceof FormData;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
   if (body && !isFormData && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
@@ -118,34 +144,28 @@ export function apiFetch(path: string, options: FetchOptions = {}) {
 /**
  * apiText
  * - Returns raw text
- * - Throws helpful error if non-OK
+ * - Throws helpful error if non-OK (includes backend error message and HTTP status)
  * - Detects HTML (usually means wrong endpoint or rewrite issues)
  */
 export async function apiText(
   path: string,
   options: FetchOptions = {},
-  fallbackMsg = "Request failed"
+  fallbackMsg = "Request failed",
 ) {
   const res = await apiFetch(path, options);
+
   const text = await res.text().catch(() => "");
 
   // Defensive: HTML ≠ JSON (often indicates your frontend got served instead of API)
-  if (text.trim().startsWith("<") && !res.ok) {
+  if (!res.ok && looksLikeHtml(text)) {
     throw new Error(
-      "Server returned HTML instead of JSON. Check VITE_API_BASE_URL and Vercel rewrites/proxy."
+      "Server returned HTML instead of JSON. Check VITE_API_BASE_URL and Vercel rewrites/proxy.",
     );
   }
 
   if (!res.ok) {
-    // Try to parse JSON error message if possible
-    let parsed: any = null;
-    try {
-      parsed = text ? JSON.parse(text) : null;
-    } catch {
-      // ignore
-    }
-    const msg = parsed?.error || parsed?.message || fallbackMsg;
-    throw new Error(typeof msg === "string" ? msg : fallbackMsg);
+    const msg = extractApiErrorMessage(text, fallbackMsg);
+    throw new Error(`${msg} (HTTP ${res.status})`);
   }
 
   return text;
@@ -158,7 +178,7 @@ export async function apiText(
 export async function apiJson<T = any>(
   path: string,
   options: FetchOptions = {},
-  fallbackMsg = "Request failed"
+  fallbackMsg = "Request failed",
 ): Promise<T> {
   const text = await apiText(path, options, fallbackMsg);
 
@@ -167,17 +187,25 @@ export async function apiJson<T = any>(
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error("Server returned non-JSON response");
+    // Include a tiny snippet to help debugging if backend accidentally returns plain text
+    const snippet = text.trim().slice(0, 140);
+    throw new Error(
+      `Server returned non-JSON response${snippet ? `: "${snippet}"` : ""}`,
+    );
   }
 }
 
 export const api = {
   auth: {
     register: async (data: any) =>
-      apiJson(`/auth/register`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }, "Failed to register"),
+      apiJson(
+        `/auth/register`,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        },
+        "Failed to register",
+      ),
 
     login: async (data: any) => {
       const json = await apiJson<{ accessToken?: string }>(
@@ -186,7 +214,7 @@ export const api = {
           method: "POST",
           body: JSON.stringify(data),
         },
-        "Failed to login"
+        "Failed to login",
       );
 
       if (json?.accessToken) {
@@ -214,9 +242,17 @@ export const api = {
     getOne: async (id: string) =>
       apiJson(`/screens/${id}`, { method: "GET" }, "Failed to load screen"),
     create: async (data: any) =>
-      apiJson(`/screens`, { method: "POST", body: JSON.stringify(data) }, "Failed to create screen"),
+      apiJson(
+        `/screens`,
+        { method: "POST", body: JSON.stringify(data) },
+        "Failed to create screen",
+      ),
     update: async (id: string, data: any) =>
-      apiJson(`/screens/${id}`, { method: "PUT", body: JSON.stringify(data) }, "Failed to update screen"),
+      apiJson(
+        `/screens/${id}`,
+        { method: "PUT", body: JSON.stringify(data) },
+        "Failed to update screen",
+      ),
     delete: async (id: string) =>
       apiJson(`/screens/${id}`, { method: "DELETE" }, "Failed to delete screen"),
   },
@@ -224,14 +260,19 @@ export const api = {
   media: {
     getAll: async () => apiJson(`/media`, { method: "GET" }, "Failed to load media"),
     create: async (data: any) =>
-      apiJson(`/media`, { method: "POST", body: JSON.stringify(data) }, "Failed to create media"),
+      apiJson(
+        `/media`,
+        { method: "POST", body: JSON.stringify(data) },
+        "Failed to create media",
+      ),
     delete: async (id: string) =>
       apiJson(`/media/${id}`, { method: "DELETE" }, "Failed to delete media"),
   },
 
   devices: {
     list: async () => apiJson(`/devices/list`, { method: "GET" }, "Failed to load devices"),
-    listFull: async () => apiJson(`/devices/list-full`, { method: "GET" }, "Failed to load devices"),
+    listFull: async () =>
+      apiJson(`/devices/list-full`, { method: "GET" }, "Failed to load devices"),
     details: async (id: string) =>
       apiJson(`/devices/${id}/details`, { method: "GET" }, "Failed to load device details"),
     locationList: async () =>
@@ -240,7 +281,7 @@ export const api = {
       apiJson(
         `/admin/devices/${deviceId}/command`,
         { method: "POST", body: JSON.stringify(data) },
-        "Failed to send device command"
+        "Failed to send device command",
       ),
   },
 
@@ -249,11 +290,19 @@ export const api = {
       list: async () =>
         apiJson(`/admin/users`, { method: "GET" }, "Failed to list users"),
       create: async (data: { email: string; password: string; role?: string; name?: string }) =>
-        apiJson(`/admin/users`, { method: "POST", body: JSON.stringify(data) }, "Failed to create user"),
+        apiJson(
+          `/admin/users`,
+          { method: "POST", body: JSON.stringify(data) },
+          "Failed to create user",
+        ),
     },
     screens: {
       rotateToken: async (id: number) =>
-        apiJson(`/admin/screens/${id}/rotate-token`, { method: "POST" }, "Failed to rotate device token"),
+        apiJson(
+          `/admin/screens/${id}/rotate-token`,
+          { method: "POST" },
+          "Failed to rotate device token",
+        ),
     },
   },
 };
