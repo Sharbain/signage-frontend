@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { loadLeaflet } from "../lib/loadLeaflet";
+import { api } from "@/lib/api";
 import "../styles/device-popup.css";
-import { apiFetch } from "@/lib/api";
 
 interface Device {
   id: string;
@@ -19,28 +19,19 @@ export default function DeviceMap() {
 
   async function loadDevices() {
     try {
-      const res = await apiFetch("/devices/list-full", { method: "GET" });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`Failed to load devices (${res.status}) ${txt.slice(0, 120)}`);
-      }
-
-      const text = await res.text();
-      const data = text.trim().startsWith("{") ? JSON.parse(text) : { devices: [] };
-
-      const mapped: Device[] = Array.isArray(data?.devices)
-        ? data.devices.map((d: any) => ({
-            id: String(d.id ?? d.device_id ?? ""),
-            name: String(d.name ?? "Device"),
-            status: (d.is_online ? "online" : "offline") as any,
-            latitude: d.latitude ?? null,
-            longitude: d.longitude ?? null,
-          }))
-        : [];
-
-      setDevices(mapped);
+      const res = await api.devices.locationList();
+      const list = Array.isArray((res as any)?.devices) ? (res as any).devices : [];
+      setDevices(
+        list.map((d: any) => ({
+          id: String(d.id),
+          name: String(d.name ?? d.id),
+          status: (d.status as any) ?? (d.is_online ? "online" : "offline"),
+          latitude: d.latitude ?? null,
+          longitude: d.longitude ?? null,
+        })),
+      );
     } catch (e) {
-      console.error("DeviceMap loadDevices error:", e);
+      console.error("Failed to load device locations", e);
       setDevices([]);
     }
   }

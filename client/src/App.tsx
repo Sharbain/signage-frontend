@@ -28,9 +28,6 @@ const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const ClientDetailPage = lazy(() => import("./pages/ClientDetailPage"));
 const GroupDetailPage = lazy(() => import("./pages/GroupDetailPage"));
 const DeviceMap = lazy(() => import("./pages/DeviceMap"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Accounting = lazy(() => import("./pages/Accounting"));
 
 function PageFallback() {
   return (
@@ -125,41 +122,8 @@ export default function App() {
               />
 
               {/* Aliases / redirects */}
-              <Route
-                path="device-map"
-                element={
-                  <div className="p-6">
-                    <DeviceMap />
-                  </div>
-                }
-              />
-
-              <Route
-                path="settings"
-                element={
-                  <div className="p-6">
-                    <Settings />
-                  </div>
-                }
-              />
-
-              <Route
-                path="reports"
-                element={
-                  <div className="p-6">
-                    <Reports />
-                  </div>
-                }
-              />
-
-              <Route
-                path="accounting"
-                element={
-                  <div className="p-6">
-                    <Accounting />
-                  </div>
-                }
-              />
+              <Route path="groups" element={<Navigate to="/devices" replace />} />
+              <Route path="device-map" element={<DeviceMap />} />
 
               <Route path="admin/users" element={<AdminUsers />} />
             </Route>
