@@ -32,8 +32,7 @@ export default function Navbar() {
           type="button"
           className="p-2 hover:bg-[#f5f5f0] rounded-lg transition flex items-center gap-2"
           onClick={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("access_token");
+            localStorage.removeItem("accessToken");
             localStorage.removeItem("user");
             window.location.href = "/login";
           }}
