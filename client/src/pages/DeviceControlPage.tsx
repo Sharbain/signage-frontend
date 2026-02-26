@@ -50,6 +50,11 @@ function fmtTime(s?: string | null) {
   return d.toLocaleString();
 }
 
+function withCacheBuster(url: string) {
+  const t = Date.now();
+  return url.includes("?") ? `${url}&t=${t}` : `${url}?t=${t}`;
+}
+
 export default function DeviceControlPage() {
   const { id } = useParams();
   const deviceId = id as string;
@@ -62,11 +67,29 @@ export default function DeviceControlPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [screenshotBusy, setScreenshotBusy] = useState(false);
+
   const isOnline = useMemo(() => {
     const s = (device?.status || "").toLowerCase();
     // your backend sometimes returns "Online" / "Offline" in details
     return s.includes("online") || s === "online";
   }, [device?.status]);
+
+  async function fetchLatestScreenshotUrl(): Promise<string | null> {
+    const snap = await apiJson<{ file: string | null }>(
+      `/admin/devices/${deviceId}/last-screenshot`,
+      { method: "GET" },
+      "Failed to load screenshot"
+    );
+
+    const file = snap?.file || null;
+    if (!file) return null;
+
+    const base = API_ROOT || window.location.origin;
+    const absolute = file.startsWith("http") ? file : `${base}${file}`;
+    // IMPORTANT: bust browser cache so the newest screenshot appears immediately
+    return withCacheBuster(absolute);
+  }
 
   async function loadAll() {
     try {
@@ -74,27 +97,17 @@ export default function DeviceControlPage() {
       setError(null);
 
       const details = await api.devices.details(deviceId);
-      setDevice(details);
 
       // Latest screenshot is admin-only (do NOT call /api/device/* from CMS)
       try {
-        const snap = await apiJson<{ file: string | null }>(
-          `/admin/devices/${deviceId}/last-screenshot`,
-          { method: "GET" },
-          "Failed to load screenshot"
-        );
-        const file = snap?.file || null;
-        if (file) {
-          const base = API_ROOT || window.location.origin;
-          (details as any).lastScreenshot = file.startsWith('http') ? file : `${base}${file}`;
-        } else {
-          (details as any).lastScreenshot = null;
-        }
+        const shotUrl = await fetchLatestScreenshotUrl();
+        (details as any).lastScreenshot = shotUrl;
       } catch {
         // If screenshot fetch fails, don't break device explorer
         (details as any).lastScreenshot = null;
       }
 
+      setDevice(details);
 
       // command history is admin-protected, uses JWT
       setLoadingHistory(true);
@@ -121,19 +134,64 @@ export default function DeviceControlPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId]);
 
+  async function refreshHistoryOnly() {
+    const h = await apiJson<CommandHistoryRow[]>(
+      `/admin/devices/${deviceId}/commands/history`,
+      { method: "GET" },
+      "Failed to load command history"
+    );
+    setHistory(Array.isArray(h) ? h : []);
+  }
+
   async function send(type: any, value?: number) {
     try {
       await api.devices.command(deviceId, value !== undefined ? { type, value } : { type });
-      // refresh history after command
-      const h = await apiJson<CommandHistoryRow[]>(
-        `/admin/devices/${deviceId}/commands/history`,
-        { method: "GET" },
-        "Failed to load command history"
-      );
-      setHistory(Array.isArray(h) ? h : []);
+      await refreshHistoryOnly();
     } catch (e) {
       console.error(e);
       alert(safeErr(e));
+    }
+  }
+
+  async function handleScreenshotClick() {
+    if (screenshotBusy) return;
+
+    const prev = device?.lastScreenshot ?? null;
+    setScreenshotBusy(true);
+
+    try {
+      // 1) Send command
+      await api.devices.command(deviceId, { type: "SCREENSHOT" });
+      await refreshHistoryOnly();
+
+      // 2) Poll for a new screenshot URL for a short time
+      // (device needs time to capture + upload)
+      const deadline = Date.now() + 20_000; // 20s
+      let nextUrl: string | null = null;
+
+      while (Date.now() < deadline) {
+        try {
+          nextUrl = await fetchLatestScreenshotUrl();
+          if (nextUrl && nextUrl !== prev) break;
+        } catch {
+          // ignore and keep polling briefly
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+
+      // 3) Update UI
+      setDevice((d) => {
+        if (!d) return d;
+        return {
+          ...d,
+          lastScreenshot: nextUrl ?? d.lastScreenshot,
+        };
+      });
+    } catch (e) {
+      console.error(e);
+      alert(safeErr(e));
+    } finally {
+      setScreenshotBusy(false);
     }
   }
 
@@ -256,10 +314,12 @@ export default function DeviceControlPage() {
 
             <button
               className="inline-flex items-center gap-2 px-3 py-2 rounded border bg-white hover:bg-[#f5f5f0]"
-              onClick={() => send("SCREENSHOT")}
+              onClick={handleScreenshotClick}
+              disabled={screenshotBusy}
+              title={screenshotBusy ? "Capturing…" : "Take screenshot"}
             >
               <Camera className="w-4 h-4" />
-              Screenshot
+              {screenshotBusy ? "Screenshot…" : "Screenshot"}
             </button>
           </div>
 
@@ -269,13 +329,14 @@ export default function DeviceControlPage() {
               <div className="text-sm font-medium text-[#3d3d3d] mb-2">Latest Screenshot</div>
               <div className="border rounded-xl overflow-hidden bg-black">
                 <img
+                  key={device.lastScreenshot} // force re-mount when URL changes
                   src={device.lastScreenshot}
                   alt="Latest device screenshot"
                   className="w-full h-auto"
                 />
               </div>
               <div className="text-xs text-[#6b6b6b] mt-2">
-                Tip: press <b>Screenshot</b>, then hit <b>Refresh</b> after a few seconds.
+                Press <b>Screenshot</b> again anytime — it will auto-refresh when the new image arrives.
               </div>
             </div>
           ) : (
