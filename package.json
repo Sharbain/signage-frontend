@@ -97,7 +97,8 @@
     "zod-validation-error": "^3.4.0",
     "cors": "^2.8.5",
     "helmet": "^7.1.0",
-    "express-rate-limit": "^7.5.0"
+    "express-rate-limit": "^7.5.0",
+    "qrcode.react": "^4.2.0"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.4.4",
