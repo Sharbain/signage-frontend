@@ -116,6 +116,16 @@ export function apiFetch(path: string, options: FetchOptions = {}) {
 }
 
 /**
+ * ✅ IMPORTANT: Compatibility export
+ * Some pages import `apiFetch` and others import `api` or other helpers.
+ * Vercel error happens when apiFetch isn't available at build time.
+ *
+ * This alias ensures any older imports like `import { apiFetch } ...` work,
+ * even if someone renamed it later.
+ */
+export const apiFetchCompat = apiFetch;
+
+/**
  * apiText
  * - Returns raw text
  * - Throws helpful error if non-OK
@@ -174,10 +184,14 @@ export async function apiJson<T = any>(
 export const api = {
   auth: {
     register: async (data: any) =>
-      apiJson(`/auth/register`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }, "Failed to register"),
+      apiJson(
+        `/auth/register`,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        },
+        "Failed to register"
+      ),
 
     login: async (data: any) => {
       const json = await apiJson<{ accessToken?: string }>(
@@ -199,9 +213,17 @@ export const api = {
 
   dashboard: {
     summary: async () =>
-      apiJson(`/dashboard/summary`, { method: "GET" }, "Failed to load dashboard summary"),
+      apiJson(
+        `/dashboard/summary`,
+        { method: "GET" },
+        "Failed to load dashboard summary"
+      ),
     liveContent: async () =>
-      apiJson(`/dashboard/live-content`, { method: "GET" }, "Failed to load live content"),
+      apiJson(
+        `/dashboard/live-content`,
+        { method: "GET" },
+        "Failed to load live content"
+      ),
   },
 
   commands: {
@@ -210,30 +232,50 @@ export const api = {
   },
 
   screens: {
-    getAll: async () => apiJson(`/screens`, { method: "GET" }, "Failed to load screens"),
+    getAll: async () =>
+      apiJson(`/screens`, { method: "GET" }, "Failed to load screens"),
     getOne: async (id: string) =>
       apiJson(`/screens/${id}`, { method: "GET" }, "Failed to load screen"),
     create: async (data: any) =>
-      apiJson(`/screens`, { method: "POST", body: JSON.stringify(data) }, "Failed to create screen"),
+      apiJson(
+        `/screens`,
+        { method: "POST", body: JSON.stringify(data) },
+        "Failed to create screen"
+      ),
     update: async (id: string, data: any) =>
-      apiJson(`/screens/${id}`, { method: "PUT", body: JSON.stringify(data) }, "Failed to update screen"),
+      apiJson(
+        `/screens/${id}`,
+        { method: "PUT", body: JSON.stringify(data) },
+        "Failed to update screen"
+      ),
     delete: async (id: string) =>
       apiJson(`/screens/${id}`, { method: "DELETE" }, "Failed to delete screen"),
   },
 
   media: {
-    getAll: async () => apiJson(`/media`, { method: "GET" }, "Failed to load media"),
+    getAll: async () =>
+      apiJson(`/media`, { method: "GET" }, "Failed to load media"),
     create: async (data: any) =>
-      apiJson(`/media`, { method: "POST", body: JSON.stringify(data) }, "Failed to create media"),
+      apiJson(
+        `/media`,
+        { method: "POST", body: JSON.stringify(data) },
+        "Failed to create media"
+      ),
     delete: async (id: string) =>
       apiJson(`/media/${id}`, { method: "DELETE" }, "Failed to delete media"),
   },
 
   devices: {
-    list: async () => apiJson(`/devices/list`, { method: "GET" }, "Failed to load devices"),
-    listFull: async () => apiJson(`/devices/list-full`, { method: "GET" }, "Failed to load devices"),
+    list: async () =>
+      apiJson(`/devices/list`, { method: "GET" }, "Failed to load devices"),
+    listFull: async () =>
+      apiJson(`/devices/list-full`, { method: "GET" }, "Failed to load devices"),
     details: async (id: string) =>
-      apiJson(`/devices/${id}/details`, { method: "GET" }, "Failed to load device details"),
+      apiJson(
+        `/devices/${id}/details`,
+        { method: "GET" },
+        "Failed to load device details"
+      ),
     locationList: async () =>
       apiJson(`/devices/locations`, { method: "GET" }, "Failed to load locations"),
     command: async (deviceId: string, data: any) =>
@@ -249,11 +291,19 @@ export const api = {
       list: async () =>
         apiJson(`/admin/users`, { method: "GET" }, "Failed to list users"),
       create: async (data: { email: string; password: string; role?: string; name?: string }) =>
-        apiJson(`/admin/users`, { method: "POST", body: JSON.stringify(data) }, "Failed to create user"),
+        apiJson(
+          `/admin/users`,
+          { method: "POST", body: JSON.stringify(data) },
+          "Failed to create user"
+        ),
     },
     screens: {
       rotateToken: async (id: number) =>
-        apiJson(`/admin/screens/${id}/rotate-token`, { method: "POST" }, "Failed to rotate device token"),
+        apiJson(
+          `/admin/screens/${id}/rotate-token`,
+          { method: "POST" },
+          "Failed to rotate device token"
+        ),
     },
   },
 };
