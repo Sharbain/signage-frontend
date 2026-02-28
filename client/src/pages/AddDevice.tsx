@@ -7,6 +7,8 @@ type CreatedDevice = {
   device_id?: string;
   name: string;
   location_branch?: string | null;
+
+  // These are shown on the UI
   pairing_code?: string | null;
   pairing_expires_at?: string | null;
 };
@@ -45,8 +47,27 @@ export default function AddDevice() {
         throw new Error(body.error || "Failed to create device");
       }
 
-      const data = await res.json();
-      setCreated(data.device);
+      // Backend returns: { device: {...}, pairing_code: "123456" }
+      const data: any = await res.json();
+
+      const device: CreatedDevice = {
+        ...(data?.device ?? {}),
+        // ✅ Merge pairing code from top-level OR fallback to inside device if backend changes later
+        pairing_code:
+          data?.pairing_code ??
+          data?.pairingCode ??
+          data?.device?.pairing_code ??
+          data?.device?.pairingCode ??
+          null,
+        pairing_expires_at:
+          data?.device?.pairing_expires_at ??
+          data?.device?.pairingExpiresAt ??
+          data?.pairing_expires_at ??
+          data?.pairingExpiresAt ??
+          null,
+      };
+
+      setCreated(device);
     } catch (e: any) {
       console.error(e);
       setError(e?.message || "Failed to create device");
@@ -59,6 +80,8 @@ export default function AddDevice() {
     created?.pairing_expires_at
       ? new Date(created.pairing_expires_at).toLocaleString()
       : null;
+
+  const pairingCode = created?.pairing_code ?? null;
 
   return (
     <div className="p-6">
@@ -141,7 +164,7 @@ export default function AddDevice() {
                 </div>
 
                 <div className="font-mono text-3xl tracking-widest text-[#3d3d3d]">
-                  {created.pairing_code || "—"}
+                  {pairingCode || "—"}
                 </div>
 
                 {pairingExpiresLabel && (
@@ -154,8 +177,8 @@ export default function AddDevice() {
                   type="button"
                   className="mt-3 text-sm bg-white border border-[#e0ddd5] px-3 py-2 rounded hover:bg-[#f5f5f0] transition"
                   onClick={async () => {
-                    if (created.pairing_code) {
-                      await navigator.clipboard.writeText(created.pairing_code);
+                    if (pairingCode) {
+                      await navigator.clipboard.writeText(pairingCode);
                     }
                   }}
                 >
