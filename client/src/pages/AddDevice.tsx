@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE, authorizedFetch } from "../lib/api";
-import { QRCodeCanvas } from "qrcode.react";
 
 type CreatedDevice = {
   id: string;
@@ -144,27 +143,6 @@ export default function AddDevice() {
                 <div className="font-mono text-3xl tracking-widest text-[#3d3d3d]">
                   {created.pairing_code || "—"}
                 </div>
-
-                {/* Pairing QR (scan on device) */}
-                {created.pairing_code && (
-                  <div className="mt-4">
-                    <div className="text-xs text-[#6b6b6b] mb-2">Pairing QR (scan on the device)</div>
-                    <div className="bg-white border border-[#e0ddd5] rounded-xl p-3 inline-block">
-                      <QRCodeCanvas
-                        value={JSON.stringify({
-                          pairingCode: created.pairing_code,
-                          apiBase: API_BASE.replace(/\/?api\/?$/, ""),
-                        })}
-                        size={160}
-                        includeMargin
-                      />
-                    </div>
-                    <div className="text-[11px] text-[#6b6b6b] mt-2">
-                      You can scan this QR in the Lumina Player setup (or type the code).
-                    </div>
-                  </div>
-                )}
-
 
                 {pairingExpiresLabel && (
                   <div className="text-xs text-[#6b6b6b] mt-2">

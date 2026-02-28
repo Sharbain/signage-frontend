@@ -2,7 +2,6 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Monitor,
-  MapPin,
   Image,
   CalendarDays,
   Users,
@@ -13,7 +12,6 @@ export default function Sidebar() {
   const menu = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/", exact: true },
     { label: "Devices", icon: Monitor, path: "/devices" },
-    { label: "Device Map", icon: MapPin, path: "/device-map" },
     { label: "Content", icon: Image, path: "/content" },
     { label: "Schedule", icon: CalendarDays, path: "/schedule" },
     { label: "Monitor", icon: Activity, path: "/monitor" },

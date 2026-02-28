@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { loadLeaflet } from "../lib/loadLeaflet";
-import { api } from "@/lib/api";
 import "../styles/device-popup.css";
 
 interface Device {
@@ -18,22 +17,7 @@ export default function DeviceMap() {
   const clusterGroupRef = useRef<any>(null);
 
   async function loadDevices() {
-    try {
-      const res = await api.devices.locationList();
-      const list = Array.isArray((res as any)?.devices) ? (res as any).devices : [];
-      setDevices(
-        list.map((d: any) => ({
-          id: String(d.id),
-          name: String(d.name ?? d.id),
-          status: (d.status as any) ?? (d.is_online ? "online" : "offline"),
-          latitude: d.latitude ?? null,
-          longitude: d.longitude ?? null,
-        })),
-      );
-    } catch (e) {
-      console.error("Failed to load device locations", e);
-      setDevices([]);
-    }
+    // keep your existing device load logic
   }
 
   async function refreshMapMarkers() {

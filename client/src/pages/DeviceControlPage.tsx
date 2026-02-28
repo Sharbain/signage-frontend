@@ -1,7 +1,7 @@
 // client/src/pages/DeviceControlPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiJson, api, API_ROOT } from "@/lib/api";
+import { apiJson, api } from "@/lib/api";
 import { BrightnessControl } from "@/components/BrightnessControl";
 import { VolumeControl } from "@/components/VolumeControl";
 import {
@@ -13,7 +13,6 @@ import {
   MonitorOff,
   MonitorUp,
   RotateCcw,
-  Camera,
 } from "lucide-react";
 
 type DeviceDetails = {
@@ -25,8 +24,6 @@ type DeviceDetails = {
   connectionType?: string;
   freeStorage?: number;
   lastOffline?: string;
-  lastScreenshot?: string | null;
-  lastScreenshotAt?: string | null; // ✅ timestamp returned from backend
 };
 
 type CommandHistoryRow = {
@@ -65,6 +62,7 @@ export default function DeviceControlPage() {
 
   const isOnline = useMemo(() => {
     const s = (device?.status || "").toLowerCase();
+    // your backend sometimes returns "Online" / "Offline" in details
     return s.includes("online") || s === "online";
   }, [device?.status]);
 
@@ -74,33 +72,9 @@ export default function DeviceControlPage() {
       setError(null);
 
       const details = await api.devices.details(deviceId);
-
-      // Latest screenshot is admin-only (do NOT call /api/device/* from CMS)
-      try {
-        const snap = await apiJson<{ file: string | null; createdAt?: string | null }>(
-          `/admin/devices/${deviceId}/last-screenshot`,
-          { method: "GET" },
-          "Failed to load screenshot"
-        );
-
-        const file = snap?.file || null;
-        const createdAt = snap?.createdAt ?? null;
-
-        if (file) {
-          const base = API_ROOT || window.location.origin;
-          (details as any).lastScreenshot = file.startsWith("http") ? file : `${base}${file}`;
-          (details as any).lastScreenshotAt = createdAt;
-        } else {
-          (details as any).lastScreenshot = null;
-          (details as any).lastScreenshotAt = null;
-        }
-      } catch {
-        (details as any).lastScreenshot = null;
-        (details as any).lastScreenshotAt = null;
-      }
-
       setDevice(details);
 
+      // command history is admin-protected, uses JWT
       setLoadingHistory(true);
       const h = await apiJson<CommandHistoryRow[]>(
         `/admin/devices/${deviceId}/commands/history`,
@@ -128,7 +102,6 @@ export default function DeviceControlPage() {
   async function send(type: any, value?: number) {
     try {
       await api.devices.command(deviceId, value !== undefined ? { type, value } : { type });
-
       // refresh history after command
       const h = await apiJson<CommandHistoryRow[]>(
         `/admin/devices/${deviceId}/commands/history`,
@@ -160,7 +133,10 @@ export default function DeviceControlPage() {
         <div className="bg-white border border-[#e0ddd5] rounded-xl p-4">
           <div className="text-[#c9534a] font-semibold mb-1">Couldn’t load device</div>
           <div className="text-sm text-[#6b6b6b]">{error ?? "Unknown error"}</div>
-          <button onClick={loadAll} className="mt-3 px-3 py-2 rounded bg-[#5b7a5b] text-white">
+          <button
+            onClick={loadAll}
+            className="mt-3 px-3 py-2 rounded bg-[#5b7a5b] text-white"
+          >
             Retry
           </button>
         </div>
@@ -215,7 +191,6 @@ export default function DeviceControlPage() {
           <BrightnessControl deviceId={deviceId} />
           <VolumeControl deviceId={deviceId} />
 
-          {/* ✅ RESTORED buttons */}
           <div className="flex flex-wrap gap-2 pt-2">
             <button
               className="inline-flex items-center gap-2 px-3 py-2 rounded border bg-white hover:bg-[#f5f5f0]"
@@ -256,36 +231,7 @@ export default function DeviceControlPage() {
               <RotateCcw className="w-4 h-4" />
               Restart App
             </button>
-
-            <button
-              className="inline-flex items-center gap-2 px-3 py-2 rounded border bg-white hover:bg-[#f5f5f0]"
-              onClick={() => send("SCREENSHOT")}
-            >
-              <Camera className="w-4 h-4" />
-              Screenshot
-            </button>
           </div>
-
-          {/* Latest screenshot */}
-          {device.lastScreenshot ? (
-            <div className="pt-4">
-              <div className="text-sm font-medium text-[#3d3d3d] mb-2">Latest Screenshot</div>
-              <div className="border rounded-xl overflow-hidden bg-black">
-                <img
-                  src={device.lastScreenshot}
-                  alt="Latest device screenshot"
-                  className="w-full h-auto"
-                />
-              </div>
-
-              {/* ✅ your requested replacement text */}
-              <div className="text-xs text-[#6b6b6b] mt-2">
-                {fmtTime(device.lastScreenshotAt)}
-              </div>
-            </div>
-          ) : (
-            <div className="pt-4 text-xs text-[#6b6b6b]">No screenshot yet.</div>
-          )}
         </div>
 
         <div className="bg-white border border-[#e0ddd5] rounded-2xl p-4 shadow-sm">
